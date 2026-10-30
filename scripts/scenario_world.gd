@@ -198,6 +198,19 @@ func candy(parent: Node3D, index: int) -> void:
 		spiral.rotation.x = PI / 2
 	NeonGeometry.box(parent, Vector3(0, 2, -10), Vector3(25, 4, 12), soft)
 
+func factory(parent: Node3D, index: int) -> void:
+	NeonGeometry.box(parent, Vector3(0, 8, 0), Vector3(26, 16, 25), dark)
+	for x in [-8, 8]:
+		cylinder(parent, Vector3(x, 25, 0), 2, 34, soft)
+		for y in [15, 26, 36]:
+			NeonGeometry.ring(parent, 2.1, 0.2, accent).position = Vector3(x, y, 0)
+	NeonGeometry.box(parent, Vector3(0, 18, 0), Vector3(30, 0.7, 5), soft)
+	var gear := NeonGeometry.ring(parent, 6, 0.8, accent)
+	gear.position = Vector3(0, 13, 13)
+	gear.rotation.x = PI / 2
+	if posmod(index, 2) == 0:
+		motors.append(gear)
+
 func _process(delta: float) -> void:
 	for motor in motors:
 		motor.rotate_z(delta * 0.12)
