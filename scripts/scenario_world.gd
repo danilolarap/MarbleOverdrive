@@ -165,6 +165,14 @@ func ocean(parent: Node3D, index: int) -> void:
 	if posmod(index, 2) == 0:
 		NeonGeometry.box(parent, Vector3(8, 26, 4), Vector3(3, 2, 3), accent)
 
+func jungle(parent: Node3D) -> void:
+	for i in range(6):
+		tree(parent, Vector3(rng.randf_range(-13, 13), 0, rng.randf_range(-13, 13)), rng.randf_range(1.4, 2.2))
+	NeonGeometry.box(parent, Vector3(0, 4, 0), Vector3(12, 8, 10), dark)
+	for side in [-1, 1]:
+		cylinder(parent, Vector3(side * 7, 10, 0), 1.3, 20, soft, 1)
+	NeonGeometry.beam(parent, Vector3(-7, 20, 0), Vector3(7, 20, 0), 1, 1, accent)
+
 func _process(delta: float) -> void:
 	for motor in motors:
 		motor.rotate_z(delta * 0.12)
