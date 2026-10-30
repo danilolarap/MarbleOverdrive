@@ -211,6 +211,17 @@ func factory(parent: Node3D, index: int) -> void:
 	if posmod(index, 2) == 0:
 		motors.append(gear)
 
+func gardens(parent: Node3D) -> void:
+	var island := NeonGeometry.sphere(parent, 15, dark)
+	island.scale = Vector3(1, 0.3, 1)
+	island.position.y = 12
+	cylinder(parent, Vector3(0, 15, 0), 14, 0.5, scene_material(Color("48766c")))
+	for i in range(3):
+		tree(parent, Vector3(-7 + i * 7, 15, 0), 0.8)
+	for x in [-6, 6]:
+		NeonGeometry.box(parent, Vector3(x, 6, 10), Vector3(1.5, 18, 0.3), scene_material(Color("6dcbdc"), 0.4))
+	NeonGeometry.ring(parent, 10, 0.1, accent).position.y = 15.5
+
 func _process(delta: float) -> void:
 	for motor in motors:
 		motor.rotate_z(delta * 0.12)
