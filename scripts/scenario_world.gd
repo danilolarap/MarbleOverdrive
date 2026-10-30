@@ -127,6 +127,20 @@ func zoo(parent: Node3D, index: int) -> void:
 		NeonGeometry.beam(parent, Vector3(5.2, 4.6, 0), Vector3(6.2, 1.8, 0), 0.8, 0.8, animal)
 	tree(parent, Vector3(-10, 0, -9))
 
+func spaceport(parent: Node3D, index: int) -> void:
+	cylinder(parent, Vector3(0, 1, 0), 12, 2, dark)
+	NeonGeometry.ring(parent, 10, 0.18, accent).position.y = 2.1
+	cylinder(parent, Vector3(0, 13, 0), 3, 22, scene_material(Color("afb8cc"), 0, 0.7))
+	cylinder(parent, Vector3(0, 27, 0), 3, 7, soft, 0)
+	for side in [-1, 1]:
+		NeonGeometry.box(parent, Vector3(side * 3, 5, 0), Vector3(0.5, 7, 5), accent)
+		NeonGeometry.box(parent, Vector3(side * 9, 17, 0), Vector3(1, 34, 1), dark)
+	NeonGeometry.box(parent, Vector3(0, 29, -3), Vector3(20, 1, 1), soft)
+	if posmod(index, 2) == 0:
+		var dish := NeonGeometry.ring(parent, 6, 0.7, accent)
+		dish.position = Vector3(-15, 18, 0)
+		dish.rotation.x = 0.8
+
 func _process(delta: float) -> void:
 	for motor in motors:
 		motor.rotate_z(delta * 0.12)
