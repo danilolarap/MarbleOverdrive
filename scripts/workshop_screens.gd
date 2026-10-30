@@ -297,3 +297,34 @@ func gallery(ui) -> void:
 			ui.show_scenarios(ui.scene_return), id == Session.scenario))
 	root.add_child(ui.label(tr("SCENE_" + Session.scenario) + "    /    " + tr("BACK"), 16, ui.accent))
 
+func guide(ui) -> void:
+	var root = ui._clear("guide")
+	ui.header(root, tr("LIBRARY"), tr("GUIDE_NOTE"))
+	var tabs := HBoxContainer.new()
+	root.add_child(tabs)
+	for category in ["EQUIPMENT", "TRAPS", "POWERS"]:
+		var chosen: String = category
+		tabs.add_child(ui.button(tr(category), func():
+			ui.guide_category = chosen
+			ui.show_guide(ui.guide_return), ui.guide_category == category))
+	root.add_child(ui.paragraph(tr("CATEGORY_" + ui.guide_category), 18))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(scroll)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(grid)
+	var entries: Array = Session.POWER_IDS if ui.guide_category == "POWERS" else Session.ITEM_IDS
+	for id in entries:
+		if ui.guide_category != "POWERS" and GameCatalog.ITEMS[id].category != ui.guide_category:
+			continue
+		var tint: Color = GameCatalog.ITEMS[id].color if GameCatalog.ITEMS.has(id) else ui.accent
+		var col = ui.card(grid, tint)
+		col.custom_minimum_size = Vector2(500, 130)
+		col.add_child(ui.label(tr(id), 24, tint.darkened(0.45) if Session.light else tint))
+		if GameCatalog.ITEMS.has(id):
+			col.add_child(ui.label(tr("COST") % GameCatalog.ITEMS[id].cost, 17))
+		col.add_child(ui.paragraph(tr(id + "_DESC"), 18))
+	root.add_child(ui.paragraph(tr("BALANCE_NOTE"), 15))
