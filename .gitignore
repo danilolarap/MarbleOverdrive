@@ -1,0 +1,24 @@
+# Godot rebuilds its import cache from the source files.
+/.godot/
+
+# Keep the portable engine, test data and screenshots local.
+/tools/*
+!/tools/.gdignore
+/logs/
+
+# Distribution artifacts belong in releases, not source history.
+/dist/
+/builds/
+/export_templates/
+/feature_profiles/
+/script_templates/
+/text_editor_themes/
+
+# Local editor / operating-system metadata.
+/.idea/
+/.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+*.log
