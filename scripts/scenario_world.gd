@@ -173,6 +173,20 @@ func jungle(parent: Node3D) -> void:
 		cylinder(parent, Vector3(side * 7, 10, 0), 1.3, 20, soft, 1)
 	NeonGeometry.beam(parent, Vector3(-7, 20, 0), Vector3(7, 20, 0), 1, 1, accent)
 
+func desert(parent: Node3D, index: int) -> void:
+	if posmod(index, 2) == 0:
+		var pyramid := cylinder(parent, Vector3(0, 15, 0), 23, 30, soft, 0, 4)
+		pyramid.rotation.y = PI / 4
+	else:
+		for i in range(4):
+			var x := -12.0 + i * 7
+			cylinder(parent, Vector3(x, 4, 0), 0.9, 8, scene_material(Color("486b59")))
+			NeonGeometry.beam(parent, Vector3(x, 4, 0), Vector3(x + 2.2, 5, 0), 0.7, 0.7, soft)
+			cylinder(parent, Vector3(x + 2.2, 6, 0), 0.7, 3, soft)
+	var dune := NeonGeometry.sphere(parent, 16, scene_material(Color("8c7767")))
+	dune.scale = Vector3(1.3, 0.25, 1)
+	dune.position.z = -13
+
 func _process(delta: float) -> void:
 	for motor in motors:
 		motor.rotate_z(delta * 0.12)
