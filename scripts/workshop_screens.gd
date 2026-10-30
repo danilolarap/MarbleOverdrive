@@ -221,3 +221,50 @@ func setup(ui) -> void:
 	ui.add_notice(root)
 	refresh_budgets(ui)
 
+func item_selector(ui, parent: Node, player: int, slot: int) -> void:
+	var picker := OptionButton.new()
+	picker.add_to_group("loadout_pickers")
+	picker.set_meta("pilot", player)
+	picker.set_meta("slot", slot)
+	for category in ["EQUIPMENT", "TRAPS"]:
+		picker.add_separator(tr(category))
+		for id in Session.ITEM_IDS:
+			if GameCatalog.ITEMS[id].category != category:
+				continue
+			picker.add_item("%02d   %s   /   %d" % [slot + 1, tr(id), GameCatalog.ITEMS[id].cost])
+			picker.set_item_metadata(picker.item_count - 1, id)
+			if id == Session.players[player].items[slot]:
+				picker.selected = picker.item_count - 1
+	parent.add_child(picker)
+	var description = ui.paragraph(tr(Session.players[player].items[slot] + "_SHORT"), 14)
+	description.tooltip_text = tr(Session.players[player].items[slot] + "_DESC")
+	parent.add_child(description)
+	picker.item_selected.connect(func(choice):
+		var chosen: String = picker.get_item_metadata(choice)
+		var previous: String = Session.players[player].items[slot]
+		if chosen != previous and chosen in Session.players[player].items:
+			for option in range(picker.item_count):
+				if picker.get_item_metadata(option) == previous:
+					picker.selected = option
+			ui.show_error("DUPLICATE_ITEM")
+			return
+		Session.players[player].items[slot] = chosen
+		description.text = tr(chosen + "_SHORT")
+		description.tooltip_text = tr(chosen + "_DESC")
+		refresh_budgets(ui))
+
+func refresh_budgets(ui) -> void:
+	var valid := true
+	for i in range(2):
+		var legal := GameCatalog.valid_loadout(Session.players[i].items)
+		valid = valid and legal
+		if i < budget_labels.size() and is_instance_valid(budget_labels[i]):
+			budget_labels[i].text = tr("BUDGET") % GameCatalog.loadout_cost(Session.players[i].items)
+			budget_labels[i].add_theme_color_override("font_color", ui.accent if legal else Color("d35172"))
+	if is_instance_valid(start_button):
+		start_button.disabled = not valid
+	if not valid:
+		ui.show_error("LOADOUT_ERROR")
+	elif is_instance_valid(ui.notice) and ui.notice.text in [tr("LOADOUT_ERROR"), tr("DUPLICATE_ITEM")]:
+		ui.notice.text = ""
+
