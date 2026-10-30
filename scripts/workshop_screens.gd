@@ -268,3 +268,32 @@ func refresh_budgets(ui) -> void:
 	elif is_instance_valid(ui.notice) and ui.notice.text in [tr("LOADOUT_ERROR"), tr("DUPLICATE_ITEM")]:
 		ui.notice.text = ""
 
+func gallery(ui) -> void:
+	var root = ui._clear("scenarios")
+	ui.header(root, tr("SCENARIOS"), tr("SCENARIOS_NOTE"))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(scroll)
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(grid)
+	for id in GameCatalog.SCENARIOS:
+		var chosen: String = id
+		var col = ui.card(grid, GameCatalog.WORLD_COLORS[id][1] if Session.scenario == id else Color.TRANSPARENT)
+		var art := ScenarioThumbnail.new()
+		art.scenario_id = id
+		col.add_child(art)
+		var title = ui.paragraph(tr("SCENE_" + id), 19)
+		title.add_theme_color_override("font_color", ui.ink)
+		col.add_child(title)
+		var description = ui.paragraph(tr("SCENE_" + id + "_DESC"), 14)
+		description.custom_minimum_size.y = 42
+		col.add_child(description)
+		col.add_child(ui.button(tr("SELECTED") if id == Session.scenario else tr("SELECT_WORLD"), func():
+			Session.scenario = chosen
+			Session.save()
+			ui.show_scenarios(ui.scene_return), id == Session.scenario))
+	root.add_child(ui.label(tr("SCENE_" + Session.scenario) + "    /    " + tr("BACK"), 16, ui.accent))
+
