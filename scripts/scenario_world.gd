@@ -150,6 +150,12 @@ func volcano(parent: Node3D) -> void:
 		NeonGeometry.beam(parent, Vector3(x, height - 0.1, 5), Vector3(x * 2.4, 1, 20), 1.4, 0.3, accent)
 		NeonGeometry.sphere(parent, rng.randf_range(1, 2), accent).position = Vector3(x, height + 4 + i * 3, 0)
 
+func ice(parent: Node3D) -> void:
+	for i in range(7):
+		var height := rng.randf_range(8, 30)
+		var node := cylinder(parent, Vector3(rng.randf_range(-12, 12), height / 2, rng.randf_range(-10, 10)), 3, height, soft if i % 2 == 0 else accent, 0, 5)
+		node.rotation.z = rng.randf_range(-0.2, 0.2)
+
 func _process(delta: float) -> void:
 	for motor in motors:
 		motor.rotate_z(delta * 0.12)
