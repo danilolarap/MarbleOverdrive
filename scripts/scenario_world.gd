@@ -187,6 +187,17 @@ func desert(parent: Node3D, index: int) -> void:
 	dune.scale = Vector3(1.3, 0.25, 1)
 	dune.position.z = -13
 
+func candy(parent: Node3D, index: int) -> void:
+	for i in range(4):
+		var x := -12.0 + i * 8
+		cylinder(parent, Vector3(x, 7, 0), 0.3, 14, scene_material(Color("e8d9dc")))
+		var sweet := NeonGeometry.sphere(parent, 4, scene_material(Color.from_hsv((i + index) * 0.18, 0.5, 0.85), 0.2))
+		sweet.position = Vector3(x, 16 + i % 2 * 3, 0)
+		var spiral := NeonGeometry.ring(parent, 3, 0.18, accent)
+		spiral.position = sweet.position + Vector3(0, 0, 3.1)
+		spiral.rotation.x = PI / 2
+	NeonGeometry.box(parent, Vector3(0, 2, -10), Vector3(25, 4, 12), soft)
+
 func _process(delta: float) -> void:
 	for motor in motors:
 		motor.rotate_z(delta * 0.12)
