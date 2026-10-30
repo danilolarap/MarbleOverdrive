@@ -141,6 +141,15 @@ func spaceport(parent: Node3D, index: int) -> void:
 		dish.position = Vector3(-15, 18, 0)
 		dish.rotation.x = 0.8
 
+func volcano(parent: Node3D) -> void:
+	var height := rng.randf_range(20, 38)
+	cylinder(parent, Vector3(0, height / 2, 0), 22, height, dark, 6, 10)
+	NeonGeometry.ring(parent, 5.8, 0.9, accent).position.y = height
+	for i in range(4):
+		var x := rng.randf_range(-5, 5)
+		NeonGeometry.beam(parent, Vector3(x, height - 0.1, 5), Vector3(x * 2.4, 1, 20), 1.4, 0.3, accent)
+		NeonGeometry.sphere(parent, rng.randf_range(1, 2), accent).position = Vector3(x, height + 4 + i * 3, 0)
+
 func _process(delta: float) -> void:
 	for motor in motors:
 		motor.rotate_z(delta * 0.12)
