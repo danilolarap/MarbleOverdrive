@@ -156,6 +156,15 @@ func ice(parent: Node3D) -> void:
 		var node := cylinder(parent, Vector3(rng.randf_range(-12, 12), height / 2, rng.randf_range(-10, 10)), 3, height, soft if i % 2 == 0 else accent, 0, 5)
 		node.rotation.z = rng.randf_range(-0.2, 0.2)
 
+func ocean(parent: Node3D, index: int) -> void:
+	cylinder(parent, Vector3(0, 1, 0), 14, 3, scene_material(Color("b5a27e").darkened(0.4)), 12)
+	for i in range(3):
+		tree(parent, Vector3(-7 + i * 6, 2, -4), 0.8)
+	var tower := cylinder(parent, Vector3(8, 13, 4), 2, 24, scene_material(Color("d9d8d3")), 1.4)
+	NeonGeometry.ring(parent, 2, 0.3, accent).position = tower.position + Vector3.UP * 12
+	if posmod(index, 2) == 0:
+		NeonGeometry.box(parent, Vector3(8, 26, 4), Vector3(3, 2, 3), accent)
+
 func _process(delta: float) -> void:
 	for motor in motors:
 		motor.rotate_z(delta * 0.12)
