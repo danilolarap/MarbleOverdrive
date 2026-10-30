@@ -73,6 +73,28 @@ func tree(parent: Node3D, position: Vector3, scale_value: float = 1) -> void:
 	crown.position = position + Vector3.UP * 9 * scale_value
 	crown.scale = Vector3(1, 1.4, 1)
 
+func playground(parent: Node3D, index: int) -> void:
+	if posmod(index, 2) == 0:
+		var axle := Node3D.new()
+		axle.position.y = 19
+		parent.add_child(axle)
+		var wheel := NeonGeometry.ring(axle, 14, 0.25, accent)
+		wheel.rotation.x = PI / 2
+		for i in range(10):
+			var point := Vector3(cos(i * TAU / 10) * 14, sin(i * TAU / 10) * 14, 0)
+			NeonGeometry.beam(axle, Vector3.ZERO, point, 0.12, 0.12, soft)
+			NeonGeometry.box(axle, point - Vector3(0, 1, 0), Vector3(2.5, 2, 2), scene_material(Color.from_hsv(i / 10.0, 0.55, 0.8), 0.3))
+		motors.append(axle)
+		for x in [-5, 5]:
+			NeonGeometry.beam(parent, Vector3(x, 0, -2), Vector3(0, 19, 0), 0.6, 0.6, dark)
+	else:
+		cylinder(parent, Vector3(0, 1, 0), 11, 2, soft)
+		cylinder(parent, Vector3(0, 13, 0), 12, 5, accent, 1)
+		for i in range(8):
+			var p := Vector3(cos(i * TAU / 8) * 8, 6, sin(i * TAU / 8) * 8)
+			cylinder(parent, p, 0.15, 10, accent)
+			NeonGeometry.sphere(parent, 1.5, scene_material(Color.from_hsv(i / 8.0, 0.6, 0.9))).position = p
+
 func _process(delta: float) -> void:
 	for motor in motors:
 		motor.rotate_z(delta * 0.12)
