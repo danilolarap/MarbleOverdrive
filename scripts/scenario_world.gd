@@ -95,6 +95,38 @@ func playground(parent: Node3D, index: int) -> void:
 			cylinder(parent, p, 0.15, 10, accent)
 			NeonGeometry.sphere(parent, 1.5, scene_material(Color.from_hsv(i / 8.0, 0.6, 0.9))).position = p
 
+func zoo(parent: Node3D, index: int) -> void:
+	parent.position.y = 12
+	NeonGeometry.box(parent, Vector3(0, -6, 0), Vector3(28, 12, 30), dark)
+	NeonGeometry.box(parent, Vector3(0, 0.3, 0), Vector3(27, 0.5, 29), scene_material(Color("335549")))
+	for side in [-1, 1]:
+		for n in range(-4, 5):
+			cylinder(parent, Vector3(side * 14, 1.5, n * 3.5), 0.12, 3, soft)
+		NeonGeometry.beam(parent, Vector3(side * 14, 2.3, -14), Vector3(side * 14, 2.3, 14), 0.1, 0.12, accent)
+	var giraffe := posmod(index, 2) == 0
+	var animal := scene_material(Color("caab6a").darkened(0.3) if giraffe else Color("8796ad").darkened(0.25), 0, 0, 0.8)
+	var body := NeonGeometry.sphere(parent, 3.1, animal)
+	body.position.y = 4 if giraffe else 3.6
+	body.scale = Vector3(1.6, 0.9, 0.9)
+	for x in [-2, 2]:
+		for z in [-1.6, 1.6]:
+			cylinder(parent, Vector3(x, 2, z), 0.35 if giraffe else 0.7, 4, animal)
+	if giraffe:
+		NeonGeometry.beam(parent, Vector3(2, 4, 0), Vector3(4, 11, 0), 1.2, 1.2, animal)
+		var head := NeonGeometry.sphere(parent, 1.3, animal)
+		head.position = Vector3(4.5, 11.6, 0)
+		head.scale.x = 1.6
+		for z in [-0.5, 0.5]:
+			cylinder(parent, Vector3(4, 13, z), 0.12, 1.2, dark)
+	else:
+		NeonGeometry.sphere(parent, 2, animal).position = Vector3(3.8, 5.1, 0)
+		for z in [-1.8, 1.8]:
+			var ear := NeonGeometry.sphere(parent, 1.8, animal)
+			ear.position = Vector3(3, 5.2, z)
+			ear.scale = Vector3(0.3, 1, 1)
+		NeonGeometry.beam(parent, Vector3(5.2, 4.6, 0), Vector3(6.2, 1.8, 0), 0.8, 0.8, animal)
+	tree(parent, Vector3(-10, 0, -9))
+
 func _process(delta: float) -> void:
 	for motor in motors:
 		motor.rotate_z(delta * 0.12)
