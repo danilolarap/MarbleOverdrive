@@ -1,0 +1,79 @@
+﻿class_name ScenarioWorld
+extends Node3D
+## Twelve original geometric environments share the same competitive road physics.
+var scenario_id := "PLAYGROUND"
+var course_seed := 42
+var motors: Array[Node3D] = []
+var water_material: ShaderMaterial
+var rng := RandomNumberGenerator.new()
+var dark: StandardMaterial3D
+var accent: StandardMaterial3D
+var soft: StandardMaterial3D
+var _materials: Dictionary = {}
+
+func scene_material(color: Color, emission: float = 0.0, metallic: float = 0.0, roughness: float = 0.4) -> StandardMaterial3D:
+	# Scenery surfaces are immutable and owned only by this environment.
+	var key := var_to_bytes([color, emission, metallic, roughness]).hex_encode()
+	if not _materials.has(key):
+		_materials[key] = NeonGeometry.material(color, emission, metallic, roughness)
+	return _materials[key]
+
+func _ready() -> void:
+	rng.seed = course_seed + GameCatalog.SCENARIOS.find(scenario_id) * 7301
+	var colors: Array = GameCatalog.WORLD_COLORS[scenario_id]
+	dark = scene_material(colors[0].lightened(0.12), 0, 0.3)
+	accent = scene_material(colors[1], 0.8)
+	soft = scene_material(colors[1].darkened(0.35), 0, 0.1)
+	NeonGeometry.box(self, Vector3(0, -1, -260), Vector3(340, 1, 760), dark)
+	for section in range(-1, 11):
+		for side in [-1, 1]:
+			var origin := Vector3(side * rng.randf_range(57, 70), 0, -section * 55.0)
+			var prop := Node3D.new()
+			prop.position = origin
+			add_child(prop)
+			match scenario_id:
+				"PLAYGROUND": playground(prop, section)
+				"ZOO": zoo(prop, section)
+				"SPACEPORT": spaceport(prop, section)
+				"VOLCANO": volcano(prop)
+				"ICE": ice(prop)
+				"OCEAN": ocean(prop, section)
+				"JUNGLE": jungle(prop)
+				"DESERT": desert(prop, section)
+				"CANDY": candy(prop, section)
+				"FACTORY": factory(prop, section)
+				"SKY_GARDENS": gardens(prop)
+	if scenario_id == "OCEAN":
+		var water := NeonGeometry.box(self, Vector3(0, 0.3, -260), Vector3(340, 0.2, 760), soft)
+		water_material = ShaderMaterial.new()
+		water_material.shader = preload("res://shaders/water.gdshader")
+		water.material_override = water_material
+	# A distinctive entrance sign is readable on the first straight.
+	var sign := Label3D.new()
+	sign.text = tr("SCENE_" + scenario_id)
+	sign.font_size = 100
+	sign.pixel_size = 0.04
+	sign.position = Vector3(-40, 30, -65)
+	sign.modulate = GameCatalog.WORLD_COLORS[scenario_id][1]
+	add_child(sign)
+
+func cylinder(parent: Node3D, position: Vector3, radius: float, height: float, material: Material, top: float = -1, sides: int = 16) -> MeshInstance3D:
+	var node := MeshInstance3D.new()
+	node.mesh = NeonGeometry.shared_mesh("cylinder", PackedFloat64Array([radius, height, radius if top < 0 else top, sides]))
+	node.material_override = material
+	node.position = position
+	parent.add_child(node)
+	return node
+
+func tree(parent: Node3D, position: Vector3, scale_value: float = 1) -> void:
+	var stem := scene_material(Color("4c3c40"))
+	cylinder(parent, position + Vector3.UP * 4 * scale_value, 0.6 * scale_value, 8 * scale_value, stem)
+	var leaf := scene_material(Color("315f54"), 0, 0, 0.9)
+	var crown := NeonGeometry.sphere(parent, 4 * scale_value, leaf)
+	crown.position = position + Vector3.UP * 9 * scale_value
+	crown.scale = Vector3(1, 1.4, 1)
+
+func _process(delta: float) -> void:
+	for motor in motors:
+		motor.rotate_z(delta * 0.12)
+
