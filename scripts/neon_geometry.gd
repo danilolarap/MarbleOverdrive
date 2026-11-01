@@ -104,3 +104,20 @@ static func batch_boxes(parent: Node3D, transforms: Array[Transform3D], surface:
 	batch.material_override = surface
 	parent.add_child(batch)
 	return batch
+
+static func consolidate_boxes(parent: Node3D) -> void:
+	# Call only after constructing static decoration, never on moving items.
+	# Preserve exact transforms and material identity while reducing submissions.
+	var groups: Dictionary = {}
+	for child in parent.get_children():
+		if child is MeshInstance3D and child.mesh is BoxMesh:
+			var material: Material = child.material_override
+			var key := material.get_instance_id()
+			if not groups.has(key):
+				groups[key] = {"material": material, "transforms": []}
+			groups[key].transforms.append(child.transform * Transform3D(Basis.IDENTITY.scaled(child.mesh.size), Vector3.ZERO))
+			child.free()
+	for entry in groups.values():
+		var transforms: Array[Transform3D] = []
+		transforms.assign(entry.transforms)
+		batch_boxes(parent, transforms, entry.material)
