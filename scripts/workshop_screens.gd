@@ -5,49 +5,56 @@ var start_button: Button
 
 func menu(ui) -> void:
 	var root = ui._clear("menu")
+	ui.menu_background()
 	var bar := HBoxContainer.new()
 	root.add_child(bar)
-	var brand = ui.label("M / O    //    SHARED TRACK DUEL", 18, ui.accent)
+	var brand = ui.label("M / O     //     " + tr("UNDERGROUND"), 16, ui.accent)
 	brand.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.add_child(brand)
-	bar.add_child(ui.label(tr("PAIR") % [Session.player_name(0), Session.player_name(1)], 18))
+	bar.add_child(ui.label(tr("PAIR") % [Session.player_name(0), Session.player_name(1)], 16))
 	ui.spacer(root)
 	var hero := HBoxContainer.new()
-	hero.add_theme_constant_override("separation", 30)
+	hero.add_theme_constant_override("separation", 40)
 	root.add_child(hero)
 	var launch := VBoxContainer.new()
-	launch.custom_minimum_size.x = 390
+	launch.custom_minimum_size.x = 540
+	launch.add_theme_constant_override("separation", 10)
 	hero.add_child(launch)
-	launch.add_child(ui.label("MARBLE", 60))
-	launch.add_child(ui.label("OVERDRIVE", 60, ui.accent))
-	launch.add_child(ui.paragraph(tr("TAGLINE"), 17))
-	launch.add_child(ui.button(tr("PLAY"), ui.show_setup, true))
-	launch.add_child(ui.button(tr("PROFILE"), ui.show_profiles))
-	var discovery := HBoxContainer.new()
-	launch.add_child(discovery)
-	for entry in [["SCENARIOS", ui.show_scenarios], ["GUIDE", ui.show_guide]]:
-		var btn = ui.button(tr(entry[0]), entry[1])
-		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		discovery.add_child(btn)
-	var utility := HBoxContainer.new()
-	launch.add_child(utility)
-	for entry in [["SETTINGS", ui.show_settings], ["CONTROLS", ui.show_controls]]:
-		var btn = ui.button(tr(entry[0]), entry[1])
-		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		utility.add_child(btn)
-	launch.add_child(ui.button(tr("QUIT"), func(): ui.get_tree().quit()))
-	var showcase = ui.card(hero)
-	showcase.add_child(ui.label(tr("SCENE_" + Session.scenario), 28))
-	showcase.add_child(ui.paragraph(tr("SCENE_" + Session.scenario + "_DESC"), 16))
-	var preview := SubViewportContainer.new()
-	preview.set_script(preload("res://scripts/menu_preview.gd"))
-	preview.custom_minimum_size = Vector2(550, 280)
-	showcase.add_child(preview)
-	showcase.add_child(ui.paragraph(tr("HOW_BODY"), 17))
+	launch.add_child(ui.label("01 / " + tr("DUEL"), 16, ui.accent))
+	for entry in [["MARBLE", 92, ui.ink], ["OVERDRIVE", 96, ui.accent]]:
+		var title = ui.label(entry[0], entry[1], entry[2])
+		title.add_theme_font_override("font", ui.title_font)
+		launch.add_child(title)
+	launch.add_child(ui.paragraph(tr("MENU_BRIEF"), 20))
+	var play = ui.button(tr("PLAY") + "    /    >>", ui.show_setup, true)
+	play.custom_minimum_size.y = 58
+	launch.add_child(play)
+	play.grab_focus()
+	var options := GridContainer.new()
+	options.columns = 2
+	options.add_theme_constant_override("h_separation", 12)
+	options.add_theme_constant_override("v_separation", 10)
+	launch.add_child(options)
+	for entry in [["PROFILE", ui.show_profiles], ["SCENARIOS", ui.show_scenarios], ["GUIDE", ui.show_guide], ["CONTROLS", ui.show_controls], ["SETTINGS", ui.show_settings], ["QUIT", func(): ui.get_tree().quit()]]:
+		var action = ui.button(tr(entry[0]), entry[1])
+		action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		options.add_child(action)
+	var side := VBoxContainer.new()
+	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hero.add_child(side)
+	ui.spacer(side)
 	ui.spacer(root)
-	root.add_child(ui.label(tr("EDITION_BADGE"), 14, ui.muted))
+	var lower := HBoxContainer.new()
+	root.add_child(lower)
+	var edition = ui.paragraph(tr("EDITION_BADGE") + "\n" + tr("LOCAL"), 13)
+	edition.size_flags_vertical = Control.SIZE_SHRINK_END
+	lower.add_child(edition)
+	var feed = ui.card(lower)
+	feed.custom_minimum_size.x = 440
+	feed.add_child(ui.label(tr("CIRCUIT_LIVE"), 13, ui.accent))
+	feed.add_child(ui.label(tr("SCENE_" + Session.scenario), 26))
+	feed.add_child(ui.paragraph(tr("SCENE_" + Session.scenario + "_DESC"), 16))
 	ui.add_notice(root)
-
 func profiles(ui) -> void:
 	var root = ui._clear("profiles")
 	ui.header(root, tr("PILOTS"), tr("PROFILE_NOTE"))

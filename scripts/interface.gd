@@ -25,6 +25,9 @@ var workshop := WorkshopScreens.new()
 var scene_return := "menu"
 var guide_return := "menu"
 var guide_category := "EQUIPMENT"
+var menu_visual: Control
+var title_font: FontVariation
+var transition: Tween
 
 func show_scenarios(origin: String = "menu") -> void:
 	scene_return = origin
@@ -45,13 +48,17 @@ func _ready() -> void:
 	show_menu()
 
 func apply_theme() -> void:
-	ink = Color("122d43") if Session.light else Color("eaf5ff")
-	muted = Color("48657a") if Session.light else Color("91abc4")
-	accent = Color("087d91") if Session.light else Color("34e4ef")
-	panel_color = Color("ffffff") if Session.light else Color("101e30")
+	ink = Color("18272d") if Session.light else Color("e8ede9")
+	muted = Color("4e6065") if Session.light else Color("a2b2b7")
+	accent = Color("126678") if Session.light else Color("cbd878")
+	panel_color = Color("f0f2ec") if Session.light else Color("152128")
 	var design := Theme.new()
-	var font := SystemFont.new()
-	font.font_names = PackedStringArray(["Segoe UI", "DejaVu Sans"])
+	# Godot's bundled font keeps layout and Spanish accents identical on all PCs.
+	var font := ThemeDB.fallback_font
+	title_font = FontVariation.new()
+	title_font.base_font = font
+	title_font.variation_embolden = 1.2
+	title_font.variation_transform = Transform2D(Vector2(0.78, 0), Vector2(-0.10, 1), Vector2.ZERO)
 	design.default_font = font
 	design.default_font_size = 18
 	for type in ["Label", "Button", "CheckButton", "LineEdit", "OptionButton", "PopupMenu"]:
@@ -72,12 +79,12 @@ func apply_theme() -> void:
 func box(color: Color, border: Color = Color.TRANSPARENT) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = color
-	style.set_corner_radius_all(12)
+	style.set_corner_radius_all(3)
 	style.set_border_width_all(1)
 	style.border_color = border
 	style.shadow_color = Color(0.01, 0.03, 0.07, 0.13 if Session.light else 0.32)
-	style.shadow_size = 8
-	style.shadow_offset = Vector2(0, 5)
+	style.shadow_size = 3
+	style.shadow_offset = Vector2(0, 3)
 	style.border_width_bottom = 2
 	style.content_margin_left = 20
 	style.content_margin_right = 20
@@ -105,10 +112,12 @@ func button(text: String, callback: Callable, primary: bool = false) -> Button:
 	result.custom_minimum_size.y = 48
 	result.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	if primary:
-		result.add_theme_stylebox_override("normal", box(accent, accent))
-		result.add_theme_stylebox_override("hover", box(accent.lightened(0.15), ink))
-		result.add_theme_color_override("font_color", Color("071925") if not Session.light else Color.WHITE)
-		result.add_theme_color_override("font_hover_color", Color("071925") if not Session.light else Color.WHITE)
+		var signal_color := Color("d2df79")
+		result.add_theme_stylebox_override("normal", box(signal_color, Color("94a146")))
+		result.add_theme_stylebox_override("hover", box(signal_color.lightened(0.12), ink))
+		result.add_theme_stylebox_override("pressed", box(signal_color.darkened(0.15), ink))
+		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			result.add_theme_color_override(state, Color("152126"))
 	result.pressed.connect(func():
 		host.audio.tone(500, 0.045)
 		callback.call())
@@ -125,6 +134,12 @@ func card(parent: Node, color: Color = Color.TRANSPARENT) -> VBoxContainer:
 	return column
 
 func _clear(next_screen: String) -> VBoxContainer:
+	if is_instance_valid(menu_visual):
+		remove_child(menu_visual)
+		menu_visual.queue_free()
+		menu_visual = null
+	if transition and transition.is_valid():
+		transition.kill()
 	screen = next_screen
 	placement_map = null
 	queue_redraw()
@@ -144,7 +159,29 @@ func _clear(next_screen: String) -> VBoxContainer:
 	add_child(content)
 	var root := VBoxContainer.new()
 	content.add_child(root)
+	content.modulate.a = 0.0
+	transition = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	transition.tween_property(content, "modulate:a", 1.0, 0.18)
 	return root
+
+func menu_background() -> void:
+	menu_visual = Control.new()
+	menu_visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu_visual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(menu_visual)
+	move_child(menu_visual, 0)
+	var preview := SubViewportContainer.new()
+	preview.set_script(preload("res://scripts/menu_preview.gd"))
+	preview.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu_visual.add_child(preview)
+	var scrim := ColorRect.new()
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://shaders/menu_scrim.gdshader")
+	material.set_shader_parameter("light_mode", Session.light)
+	scrim.material = material
+	menu_visual.add_child(scrim)
 
 func header(root: VBoxContainer, title: String, subtitle: String = "") -> void:
 	root.add_child(label("M / O     //     " + tr("LOCAL"), 12, accent))
@@ -216,6 +253,18 @@ func show_settings() -> void:
 	theme_picker.item_selected.connect(func(index):
 		Session.light = index == 1
 		Session.update_preferences())
+	var quality_row := HBoxContainer.new()
+	col.add_child(quality_row)
+	quality_row.add_child(label(tr("GRAPHICS")))
+	var quality_picker := OptionButton.new()
+	quality_picker.add_item(tr("QUALITY_BALANCED"))
+	quality_picker.add_item(tr("QUALITY_ECONOMY"))
+	quality_picker.selected = 1 if Session.quality == "economy" else 0
+	quality_row.add_child(quality_picker)
+	quality_picker.item_selected.connect(func(index):
+		Session.quality = "economy" if index == 1 else "balanced"
+		Session.update_preferences())
+	col.add_child(paragraph(tr("QUALITY_HELP"), 14))
 	for setting in ["fullscreen", "sound"]:
 		var setting_id: String = setting
 		var toggle := CheckButton.new()
@@ -324,15 +373,19 @@ func show_hud() -> void:
 		var panel := col.get_parent() as PanelContainer
 		panel.add_theme_stylebox_override("panel", box(Color(panel_color, 0.96 if Session.light else 0.9), Color(Session.players[i].color, 0.7)))
 		col.add_theme_constant_override("separation", 5)
-		col.add_child(label(Session.player_name(i), 16, Session.players[i].color.darkened(0.35) if Session.light else Session.players[i].color))
-		var speed := label("", 45)
+		col.add_child(label("P%d  /  %s" % [i + 1, Session.player_name(i)], 16, Session.players[i].color.darkened(0.45) if Session.light else Session.players[i].color))
+		var speed := label("", 34)
 		col.add_child(speed)
 		var health := ProgressBar.new()
 		health.show_percentage = false
 		health.max_value = 100
 		health.custom_minimum_size.y = 6
-		health.add_theme_stylebox_override("background", box(Color(muted, 0.15)))
-		health.add_theme_stylebox_override("fill", box(Session.players[i].color))
+		var health_back := StyleBoxFlat.new()
+		health_back.bg_color = Color(muted, 0.2)
+		var health_fill := StyleBoxFlat.new()
+		health_fill.bg_color = Session.players[i].color.darkened(0.25) if Session.light else Session.players[i].color
+		health.add_theme_stylebox_override("background", health_back)
+		health.add_theme_stylebox_override("fill", health_fill)
 		col.add_child(health)
 		var status := label("", 15, muted)
 		status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -342,9 +395,8 @@ func show_hud() -> void:
 		action_labels.append(actions)
 		hud_labels.append({"speed": speed, "health": health, "status": status, "actions": actions})
 		if i == 0:
-			var middle := VBoxContainer.new()
+			var middle := card(row)
 			middle.custom_minimum_size.x = 290
-			row.add_child(middle)
 			var brand := label("MARBLE / OVERDRIVE", 23, accent)
 			brand.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			middle.add_child(brand)
@@ -408,6 +460,7 @@ func _process(_delta: float) -> void:
 			data.speed.text = "%03d  km/h" % roundi(marble.linear_velocity.length() * 3.6)
 			var rank := 1 if marble.progress >= race.marbles[1 - i].progress else 2
 			data.status.text = "%s %d/100   ·   %s %d/2   ·   %d%%" % [tr("HEALTH"), ceili(marble.health), tr("POSITION"), rank, int(marble.progress / race.track.total_length * 100)]
+			data.status.text += "\n" + tr("SECTOR_PROGRESS") % [race.view.checkpoint_counts[i], race.view.checkpoint_distances.size()]
 			if marble.shield_points > 0:
 				data.status.text += " · " + tr("ACTIVE_SHIELD") % int(marble.shield_points)
 			if marble.grip_time > 0:
