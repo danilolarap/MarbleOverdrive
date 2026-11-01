@@ -9,7 +9,8 @@ var profiles: Dictionary = {}
 var profile_slots: Array[String] = ["Guest", "Orion"]
 var active := "Guest"
 var language := "en"
-var light := false
+var light := true
+var quality := "balanced"
 var sound := true
 var fullscreen := false
 var scenario := "CITY"
@@ -17,7 +18,7 @@ var keys: Dictionary = DEFAULT_KEYS.duplicate()
 var save_failed := false
 var players: Array[Dictionary] = [
 	{"color": Color("34e4ef"), "secondary": Color("f1f6ff"), "pattern": "STRIPES", "power": "EMP", "items": ["BOOST", "MAGNET", "OIL"]},
-	{"color": Color("ffb14a"), "secondary": Color("c196ff"), "pattern": "DUAL", "power": "JUMP", "items": ["BOOST", "MAGNET", "OIL"]}
+	{"color": Color("ef69df"), "secondary": Color("f1f6ff"), "pattern": "DUAL", "power": "JUMP", "items": ["BOOST", "MAGNET", "OIL"]}
 ]
 
 func _ready() -> void:
@@ -57,7 +58,7 @@ func _ready() -> void:
 	get_tree().root.close_requested.connect(save)
 
 func fresh_profile() -> Dictionary:
-	return {"language": "en", "light": false, "sound": true, "fullscreen": false,
+	return {"language": "en", "light": true, "quality": "balanced", "sound": true, "fullscreen": false,
 		"keys": DEFAULT_KEYS.duplicate(), "matches": 0, "p1": 0, "p2": 0, "wins": 0, "losses": 0, "draws": 0}
 
 func player_name(index: int) -> String:
@@ -78,7 +79,10 @@ func load_player(index: int) -> void:
 func load_preferences() -> void:
 	var data: Dictionary = profiles[active]
 	language = data.get("language", "en")
-	light = data.get("light", false)
+	light = data.get("light", true)
+	quality = data.get("quality", "balanced")
+	if quality not in ["balanced", "economy"]:
+		quality = "balanced"
 	sound = data.get("sound", true)
 	fullscreen = data.get("fullscreen", false)
 	scenario = data.get("scenario", "CITY")
@@ -92,7 +96,7 @@ func load_preferences() -> void:
 
 func save() -> void:
 	var data: Dictionary = profiles[active]
-	data.merge({"language": language, "light": light, "sound": sound, "fullscreen": fullscreen, "keys": keys, "scenario": scenario}, true)
+	data.merge({"language": language, "light": light, "quality": quality, "sound": sound, "fullscreen": fullscreen, "keys": keys, "scenario": scenario}, true)
 	for i in range(2):
 		profiles[profile_slots[i]].marble = players[i].duplicate(true)
 	var cfg := ConfigFile.new()
@@ -115,6 +119,7 @@ func create_profile(profile_name: String, slot: int = 0) -> bool:
 	profiles[profile_name] = fresh_profile()
 	profiles[profile_name].language = language
 	profiles[profile_name].light = light
+	profiles[profile_name].quality = quality
 	profiles[profile_name].sound = sound
 	profiles[profile_name].fullscreen = fullscreen
 	profiles[profile_name].keys = keys.duplicate()
@@ -144,6 +149,7 @@ func update_preferences() -> void:
 	preferences_changed.emit()
 
 func apply_display() -> void:
+	get_viewport().msaa_3d = Viewport.MSAA_DISABLED if quality == "economy" else Viewport.MSAA_2X
 	# Expand the canvas to the monitor's aspect ratio rather than letterboxing.
 	get_tree().root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	var desired := DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
