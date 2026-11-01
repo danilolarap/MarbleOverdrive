@@ -11,7 +11,9 @@ var icon: Node3D
 
 func _ready() -> void:
 	var color: Color = GameCatalog.ITEMS[kind].color
-	var material := NeonGeometry.material(color, 2.5)
+	var material := NeonGeometry.material(color, 0.65)
+	var housing := NeonGeometry.material(Color("353f43"), 0, 0.45, 0.55)
+	NeonGeometry.box(self, Vector3(0, 0.045, 0), Vector3(1.85, 0.09, 1.85), housing)
 	NeonGeometry.ring(self, 0.9, 0.065, material).position.y = 0.08
 	icon = Node3D.new()
 	add_child(icon)
@@ -39,8 +41,10 @@ func _ready() -> void:
 		NeonGeometry.box(icon, Vector3(0, 0.55, 0), Vector3(0.35, 1.1, 0.3), material)
 		NeonGeometry.box(icon, Vector3(0, 0.55, 0), Vector3(1.1, 0.35, 0.3), material)
 	elif kind == "SHIELD":
-		var dome := NeonGeometry.sphere(icon, 0.65, material)
-		dome.position.y = 0.7
+		for side in [-1, 1]:
+			NeonGeometry.box(icon, Vector3(side * 0.7, 0.8, 0), Vector3(0.18, 1.6, 0.25), housing)
+			NeonGeometry.box(icon, Vector3(side * 0.58, 0.8, 0.15), Vector3(0.07, 1.3, 0.08), material)
+		NeonGeometry.box(icon, Vector3(0, 1.55, 0), Vector3(1.5, 0.2, 0.25), material)
 	elif kind == "OIL":
 		NeonGeometry.sphere(icon, 0.8, NeonGeometry.material(Color("402959"), 0.3, 0.65)).scale = Vector3(1, 0.08, 1)
 	elif kind == "SHOCK":
@@ -50,16 +54,26 @@ func _ready() -> void:
 		for z in [-0.4, 0, 0.4]:
 			NeonGeometry.box(icon, Vector3(0, 0.12, z), Vector3(1.4, 0.15, 0.15), material)
 	else:
-		var ring := NeonGeometry.ring(icon, 0.5, 0.1, material)
-		ring.position.y = 0.8
-		ring.rotation.x = PI / 2
+		# Horseshoe magnet: distinguish slowdown from the shield gate at speed.
+		for side in [-1, 1]:
+			NeonGeometry.box(icon, Vector3(side * 0.45, 0.75, 0), Vector3(0.3, 0.8, 0.35), housing)
+			NeonGeometry.box(icon, Vector3(side * 0.45, 1.12, 0), Vector3(0.31, 0.22, 0.36), material)
+		NeonGeometry.box(icon, Vector3(0, 0.35, 0), Vector3(1.2, 0.3, 0.35), material)
 	var marker := NeonGeometry.sphere(self, 0.13, NeonGeometry.material(Session.players[owner_index].color, 2))
 	marker.position = Vector3(0, 1.7, 0)
+	var tag := Label3D.new()
+	tag.text = "P%d / %s" % [GameCatalog.target_lane(owner_index, kind) + 1, "!" if GameCatalog.is_trap(kind) else "+"]
+	tag.position.y = 2.1
+	tag.font_size = 32
+	tag.pixel_size = 0.015
+	tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	tag.modulate = color.lightened(0.2)
+	add_child(tag)
 
 func _process(delta: float) -> void:
 	pulse += delta
-	if icon and kind in ["MAGNET", "SHIELD", "REPAIR"]:
-		icon.rotation.y = pulse
+	if icon and not consumed and kind in ["MAGNET", "REPAIR"]:
+		icon.position.y = sin(pulse * 2) * 0.06
 
 func try_affect(marble: RacingMarble) -> bool:
 	if consumed or marble.is_protected():
