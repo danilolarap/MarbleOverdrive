@@ -22,3 +22,4 @@ Thumbs.db
 desktop.ini
 *.tmp
 *.log
+/export_credentials.cfg
