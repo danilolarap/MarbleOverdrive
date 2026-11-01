@@ -21,7 +21,7 @@ try {
     $env:XDG_DATA_HOME = $testData
     & $Godot --headless --editor --path $projectRoot --quit
     if ($LASTEXITCODE -ne 0) { throw 'Godot import failed.' }
-    foreach ($scene in @('optimization', 'smoke', 'expansion')) {
+    foreach ($scene in @('optimization', 'smoke', 'expansion', 'ui_expansion', 'art_contract')) {
         & $Godot --headless --path $projectRoot --fixed-fps 120 ('res://tests/' + $scene + '.tscn')
         if ($LASTEXITCODE -ne 0) { throw ('Checks failed: ' + $scene) }
     }

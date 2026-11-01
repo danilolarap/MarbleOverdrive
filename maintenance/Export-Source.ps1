@@ -13,7 +13,7 @@ $temporaryPath = Join-Path $outputRoot 'MarbleOverdrive-source.zip.tmp'
 
 # Deliberate allowlist: generated caches, profiles, engines and screenshots
 # can never enter the archive just because they happen to be in the workspace.
-$sourceDirectories = @('scenes', 'scripts', 'shaders', 'localization', 'tests', 'maintenance', 'docs', 'assets', 'addons', '.github')
+$sourceDirectories = @('scenes', 'scripts', 'shaders', 'localization', 'environments', 'tests', 'maintenance', 'docs', 'assets', 'addons', '.github')
 $sourceFiles = [Collections.Generic.List[IO.FileInfo]]::new()
 foreach ($directory in $sourceDirectories) {
     $sourcePath = Join-Path $projectRoot $directory
@@ -26,7 +26,7 @@ foreach ($directory in $sourceDirectories) {
         }
     }
 }
-foreach ($name in @('project.godot', 'Play.cmd', 'icon.svg', 'icon.svg.import', '.gitignore', '.gitattributes', '.editorconfig', 'export_presets.cfg')) {
+foreach ($name in @('project.godot', 'Play.cmd', 'Play.sh', 'icon.svg', 'icon.svg.import', '.gitignore', '.gitattributes', '.editorconfig', 'export_presets.cfg')) {
     $sourcePath = Join-Path $projectRoot $name
     if (Test-Path -LiteralPath $sourcePath -PathType Leaf) { $sourceFiles.Add((Get-Item -LiteralPath $sourcePath)) }
 }
