@@ -62,7 +62,7 @@ func start_race(course_seed: int) -> void:
 func _process(_delta: float) -> void:
 	# Tactical diagrams and daylight stay crisp; only night racing uses glow.
 	if is_instance_valid(bloom):
-		bloom.visible = is_instance_valid(race) and race.phase == "race" and not Session.light
+		bloom.visible = is_instance_valid(race) and race.phase == "race" and not Session.light and Session.quality != "economy"
 
 func clear_race() -> void:
 	get_tree().paused = false
