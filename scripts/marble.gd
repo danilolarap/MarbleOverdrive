@@ -8,6 +8,7 @@ const TOP_SPEED := 39.0
 const POWER_COOLDOWNS := {"EMP": 6.0, "JUMP": 5.0, "PHASE": 6.0}
 signal power_fired(marble)
 signal recovered
+signal damaged(at: Vector3, color: Color)
 var player_index := 0
 var tint := Color.CYAN
 var secondary_tint := Color.WHITE
@@ -41,6 +42,7 @@ var trail: Array[Vector3] = []
 var trail_mesh: MeshInstance3D
 var trail_geometry := ImmediateMesh.new()
 var _last_flash := -1.0
+var trail_tick := 0.0
 
 func _ready() -> void:
 	var shape := SphereShape3D.new()
@@ -76,12 +78,13 @@ func _ready() -> void:
 	aura.rotation.x = PI / 2
 	var light := OmniLight3D.new()
 	light.light_color = tint
-	light.light_energy = 2.6
-	light.omni_range = 5.5
+	light.light_energy = 1.1
+	light.omni_range = 3.5
+	light.visible = Session.quality != "economy"
 	light.position.y = 0.7
 	add_child(light)
 	var number := Label3D.new()
-	number.text = Session.player_name(player_index).left(12)
+	number.text = "P%d / %s" % [player_index + 1, Session.player_name(player_index).left(12)]
 	number.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	number.position.y = 1.3
 	number.font_size = 38
@@ -170,9 +173,13 @@ func _process(delta: float) -> void:
 		_last_flash = flash
 	ground_ring.global_position = sample.position + sample.normal * (position - sample.position).dot(sample.normal) + sample.up * 0.04
 	ground_ring.basis = Basis(sample.normal, sample.up, -sample.tangent)
-	if racing:
+	trail_tick += delta
+	if racing and trail_tick >= 1.0 / 30.0:
+		trail_tick = fmod(trail_tick, 1.0 / 30.0)
+		if trail.size() > 0 and position.distance_to(trail[0]) > 6:
+			trail.clear()
 		trail.push_front(position - Vector3(0, 0.32, 0))
-		if trail.size() > 18:
+		if trail.size() > 7:
 			trail.pop_back()
 		_update_trail(sample.normal)
 
@@ -211,6 +218,8 @@ func damage(amount: float) -> void:
 		shield_points -= absorbed
 		amount -= absorbed
 		health = maxf(0, health - amount)
+		if hurt_flash <= 0:
+			damaged.emit(position, Color("ffc083"))
 		hurt_flash = 0.25
 
 func normal_collision_mask() -> int:
