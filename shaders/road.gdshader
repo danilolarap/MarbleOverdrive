@@ -2,19 +2,20 @@ shader_type spatial;
 render_mode cull_disabled;
 uniform bool daylight = false;
 uniform bool tactical = false;
-
 void fragment() {
-	vec3 base = daylight ? vec3(0.16, 0.24, 0.32) : vec3(0.04, 0.08, 0.12);
-	if (tactical) {
-		base = vec3(0.18, 0.28, 0.38);
-	}
-	float grain = fract(sin(dot(UV * vec2(730.0, 115.0), vec2(12.9898, 78.233))) * 43758.5453);
-	float seam = 1.0 - smoothstep(0.0, 0.025, abs(fract(UV.y * 0.2) - 0.5));
-	float lane = (1.0 - smoothstep(0.0015, 0.004, abs(UV.x - 0.5))) * step(0.65, fract(UV.y * 0.22));
-	float edge = smoothstep(0.43, 0.49, abs(UV.x - 0.5));
-	ALBEDO = base + grain * 0.012 + vec3(seam * 0.025 + lane * 0.2);
-	METALLIC = 0.65;
-	ROUGHNESS = 0.22 + grain * 0.07;
-	SPECULAR = 0.85;
-	EMISSION = vec3(0.04, 0.19, 0.27) * (seam * 0.1 + edge * 0.25 + lane * 0.8);
+    vec3 base = daylight ? vec3(0.23, 0.27, 0.29) : vec3(0.16, 0.20, 0.23);
+    float aa = max(fwidth(UV.y), 0.012);
+    float seams = 1.0 - smoothstep(0.03, 0.03 + aa, abs(mod(UV.y, 5.0) - 2.5));
+    float edge = smoothstep(0.415, 0.425, abs(UV.x - 0.5));
+    float stripe = smoothstep(0.45, 0.55, fract(UV.y * 0.75 + UV.x * 14.0));
+    float center = (1.0 - smoothstep(0.003, 0.006, abs(UV.x - 0.5))) * step(0.5, fract(UV.y * 0.16));
+    float grip = 1.0 - smoothstep(0.12, 0.14, abs(abs(UV.x - 0.5) - 0.22));
+    float tread = sin(UV.y * 22.0) * 0.012 / (1.0 + aa * 22.0);
+    vec3 paint = mix(vec3(0.13, 0.15, 0.14), vec3(0.57, 0.59, 0.31), stripe);
+    ALBEDO = mix(base - grip * 0.035 + tread - seams * 0.08, paint, edge);
+    ALBEDO = mix(ALBEDO, vec3(0.70, 0.75, 0.72), center);
+    if (tactical) { ALBEDO = vec3(0.20, 0.28, 0.32); }
+    METALLIC = mix(0.35, 0.05, grip);
+    ROUGHNESS = mix(0.48, 0.8, grip);
+    SPECULAR = 0.5;
 }
