@@ -1,6 +1,8 @@
-﻿# Marble Overdrive — Shared Track Duel
+# Marble Overdrive — Shared Track Duel
 
 Juego local **3D para dos jugadores** en Godot 4.4+. Canicas luminosas, pista compartida elevada, 30 segundos de preparación y dos acciones en carrera: Poder y Freno. Funciona sin conexión y sin servicios externos.
+
+Rediseño visual: portada 3D, ciudad industrial modular, tres distritos urbanos, pista técnica, HUD unificado y efectos acotados. Incluye modos **Equilibrada / Ahorro**, español e inglés y tema claro por defecto para perfiles nuevos. Consulta [cambios, presupuesto y validación visual](docs/ART_DIRECTION.md).
 
 ## Ejecutar
 
@@ -8,9 +10,11 @@ Haz doble clic en **Play.cmd**. En este equipo usa el Godot 4.4.1 portátil de `
 
 No hay un ejecutable exportado independiente: el lanzador ejecuta el proyecto con el motor portátil. Los registros se guardan en `logs/game.log`.
 
+En **Linux y macOS**, abre `project.godot` en Godot o usa `sh Play.sh` con Godot instalado. Hay presets de Windows x64, Linux x64 y macOS Universal; las instrucciones y las pruebas pendientes por plataforma están en [exportación de escritorio](docs/DESKTOP_EXPORTS.md).
+
 ## Copia ligera para GitHub
 
-El repositorio conserva el código, los 12 escenarios, colores, patrones, traducciones y pruebas. El motor, las descargas, los perfiles de pruebas, las capturas y las cachés se excluyen con `.gitignore`; no son parte del juego como código fuente.
+El repositorio conserva el código, los 13 escenarios, colores, patrones, traducciones y pruebas. El motor, las descargas, los perfiles de pruebas, las capturas y las cachés se excluyen con `.gitignore`; no son parte del juego como código fuente.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File maintenance/Export-Source.ps1
@@ -72,7 +76,7 @@ El límite de energía, los objetos sin repetir, los efectos acotados y las cont
 
 Poderes: **PEM** (16 m, 12 de daño, empuje y breve ralentización, recarga 6 s); **Salto** (impulso vertical real, protección 1 s, recarga 5 s); **Fase** (atraviesa obstáculos con impulso durante 0,8 s, recarga 6 s). Todos conservan la colisión con suelo y barandillas. Los peligros neutrales se generan en pares simétricos, uno por mitad, para dar el mismo riesgo a ambos jugadores. Afectan a cualquiera: 18 de daño con espera de 1,1 s por peligro.
 
-## 12 escenarios elegibles
+## 13 escenarios elegibles
 
 1. **Metrópolis neón:** torres, fachadas, azoteas, anuncios, luces de calle y transporte elevado móvil.
 2. **Parque de diversiones orbital:** ruedas de observación móviles y carruseles.
@@ -84,10 +88,11 @@ Poderes: **PEM** (16 m, 12 de daño, empuje y breve ralentización, recarga 6 s)
 8. **Ruinas esmeralda:** árboles grandes y portales entre vegetación.
 9. **Dunas solares:** pirámides, dunas y cactus.
 10. **Mundo de dulces cromático:** piruletas, dulces gigantes y plataformas de color.
-11. **Distrito de reactores:** fábricas, chimeneas, pasarelas y anillos giratorios.
+11. **Distrito energético industrial:** fábricas modulares, chimeneas, conductos, pasarelas y señales ámbar.
 12. **Jardines flotantes:** islas suspendidas con árboles y cascadas.
+13. **Terminal del horizonte:** plataformas elevadas, estaciones y trenes sobre una ciudad estratificada.
 
-Los escenarios contienen geometría propia, no solo cambios de paleta. El trazado procedural, las reglas, los efectos y la física son comunes a los 12 para conservar la misma competición. El selector incluye ilustraciones de cada mundo y el menú presenta una vista 3D del seleccionado.
+Los escenarios contienen geometría propia, no solo cambios de paleta. El trazado procedural, las reglas, los efectos y la física son comunes a los 13 para conservar la misma competición. El selector incluye ilustraciones de cada mundo y el menú presenta una vista 3D del seleccionado.
 
 ## Física y generación
 
@@ -104,10 +109,12 @@ El generador offline conecta ocho módulos de rectas, curvas, subidas, bajadas, 
 - `scripts/track_generator.gd`, `race.gd`: geometría, colocación por lados, fases y victorias.
 - `scripts/marble.gd`, `tactical_item.gd`: física, poderes y efectos de los ocho objetos.
 - `scripts/track_view.gd`, `scenario_world.gd`, `neon_geometry.gd`: pista, ciudad mejorada y escenarios.
+- `scripts/district_kit.gd`, `district_profile.gd`, `environments/`: kit urbano y presets reutilizables.
+- `scripts/race_effects.gd`: chispas limitadas y señales visuales sin efectos sobre la física.
 - `scripts/tactical_map.gd`, `keyboard_diagram.gd`: mapa y controles gráficos.
 - `scripts/marble_badge.gd`, `scenario_thumbnail.gd`, `menu_preview.gd`: vistas previas e ilustraciones originales.
 - `shaders/`: patrones 3D/2D, pista PBR, agua y resplandor nocturno.
-- `localization/catalog.gd`, `expansion.gd`: inglés y español, usando `TranslationServer` de Godot.
+- `localization/catalog.gd`, `expansion.gd`, `art_direction.gd`: inglés y español, usando `TranslationServer` de Godot.
 
 ## Validación
 
@@ -121,13 +128,16 @@ $env:APPDATA = Join-Path (Get-Location) 'tools/test-data'
 ```
 
 - `smoke.tscn`: 300 semillas deterministas, perfiles, locales, temas, controles, 30 s, pausa, salto, freno continuo y en pendiente, resultados y ocho carreras completas.
-- `expansion.tscn`: dos perfiles distintos y estadísticas, persistencia de diseños, 16 combinaciones objeto/dueño, lados, destinatarios, costes y carreras completas en los 12 escenarios.
+- `expansion.tscn`: dos perfiles distintos y estadísticas, persistencia de diseños, 16 combinaciones objeto/dueño, lados, destinatarios, costes y carreras completas en los 13 escenarios.
 - `ui_expansion.tscn`: botones reales de perfiles, pestañas del taller, rechazo de duplicados, bloqueo/desbloqueo por presupuesto y guías. Con render gráfico guarda capturas.
 - `display.tscn`: tres proporciones de ventana y pantalla completa exacta al monitor; requiere render gráfico.
-- `world_capture.tscn`: captura los 12 mundos, perfiles, taller, guía y selector; requiere render gráfico.
+- `world_capture.tscn`: captura los 13 mundos, perfiles, taller, guía y selector; requiere render gráfico.
 - `stability.tscn`: doce ciclos gráficos de menús, temas, colocación, pausa, carrera, resultados y audio.
 - `optimization.tscn`: 8960 comparaciones contra la búsqueda exhaustiva, mallas compartidas, colores independientes y caché acotada.
-- `performance.tscn`: medición reproducible de CPU, mallas, materiales y geometría de los 12 escenarios.
+- `performance.tscn`: medición reproducible de CPU, mallas, materiales y geometría de los 13 escenarios.
+- `art_contract.tscn`: límites de efectos, persistencia visual, traducciones y separación del decorado; los límites de instancias requieren render gráfico.
+- `art_review.tscn`: 31 capturas de temas, idiomas, resoluciones, distritos, menús, colocación, pausa y resultados.
+- `art_benchmark.tscn`: comparación gráfica de ambas calidades con escena fija; ejecutar sin `--fixed-fps`.
 
 Para pruebas gráficas omite `--headless` y cambia la escena. Las capturas quedan en `tools/`.
 

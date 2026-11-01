@@ -1,5 +1,7 @@
 # Proyecto ligero para GitHub
 
+> Registro de la optimizacion anterior. El presupuesto y las mediciones del rediseño actual estan en [ART_DIRECTION.md](ART_DIRECTION.md).
+
 El juego se distribuye como codigo fuente Godot: los 12 escenarios, las
 apariencias y los sonidos se construyen con geometria, shaders y PCM originales.
 No hace falta subir el ejecutable del motor para conservar estas funciones.

@@ -87,3 +87,46 @@ capturas, los registros y las caches permanecen fuera del historial.
 
 El registro de la comprobacion final figura en [VALIDATION.md](VALIDATION.md).
 Las instrucciones de ejecucion estan en [README.md](../README.md).
+
+## Serie adicional: rediseño visual en 30 commits
+
+Esta serie continúa los 66 commits originales desde `c39a225`. Agrupa los
+cambios del rediseño por recursos y responsabilidades, con contenido real en
+cada commit. No cambia las fechas ni reescribe el historial anterior.
+
+| N. | Cambio |
+| --- | --- |
+| 01 | Normalizar finales de línea para recursos y lanzadores |
+| 02 | Excluir credenciales de exportación del repositorio |
+| 03 | Incorporar el lanzador para macOS y Linux |
+| 04 | Crear el material procedural de arquitectura |
+| 05 | Animar los paneles de señalización urbana |
+| 06 | Definir recursos configurables de distrito |
+| 07 | Configurar los tres distritos urbanos |
+| 08 | Conservar calidad visual y tema claro inicial |
+| 09 | Agrupar geometría estática por material |
+| 10 | Construir el kit de ciudad e infraestructura |
+| 11 | Limitar chispas y efectos de carrera |
+| 12 | Traducir la nueva identidad y los ajustes |
+| 13 | Integrar la terminal en el catálogo y selector |
+| 14 | Dibujar superficies técnicas de carretera |
+| 15 | Refinar el acabado metálico de las canicas |
+| 16 | Identificar pilotos y acortar las estelas |
+| 17 | Diferenciar siluetas y destinatarios de objetos |
+| 18 | Integrar distritos, barandillas y arcos de sector |
+| 19 | Conectar activaciones, impactos y meta con efectos |
+| 20 | Reducir el coste del brillo nocturno |
+| 21 | Aplicar el modo de ahorro a los efectos globales |
+| 22 | Crear el contraste de lectura de la portada |
+| 23 | Unificar paneles, botones y fondo técnico |
+| 24 | Rediseñar portada, navegación, temas y HUD |
+| 25 | Validar separación de decorado y límites visuales |
+| 26 | Capturar temas, idiomas, resoluciones y distritos |
+| 27 | Medir ambas calidades en una escena reproducible |
+| 28 | Incluir recursos nuevos en comprobaciones y paquetes |
+| 29 | Preparar la exportación para Windows, macOS y Linux |
+| 30 | Documentar el rediseño, su rendimiento y validación |
+
+Las comprobaciones del estado final y los límites de la verificación por
+plataforma se describen en [ART_DIRECTION.md](ART_DIRECTION.md) y
+[DESKTOP_EXPORTS.md](DESKTOP_EXPORTS.md).
