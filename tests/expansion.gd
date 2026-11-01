@@ -131,5 +131,5 @@ func run() -> void:
 	host.clear_race()
 	host.queue_free()
 	await get_tree().process_frame
-	print("PASS: 12 worlds, 2 profiles, individual stats, skin persistence, 16 item/owner combinations, lane restrictions, costs and complete races" if errors.is_empty() else "FAIL: %d checks" % errors.size())
+	print("PASS: 13 worlds, 2 profiles, individual stats, skin persistence, 16 item/owner combinations, lane restrictions, costs and complete races" if errors.is_empty() else "FAIL: %d checks" % errors.size())
 	get_tree().quit(0 if errors.is_empty() else 1)

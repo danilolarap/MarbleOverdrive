@@ -13,8 +13,9 @@ const ITEMS := {
 	"OIL": {"category": "TRAPS", "cost": 1, "color": Color("c2a2e9")},
 	"SHOCK": {"category": "TRAPS", "cost": 2, "color": Color("ffc86d")}
 }
-const SCENARIOS := ["CITY", "PLAYGROUND", "ZOO", "SPACEPORT", "VOLCANO", "ICE", "OCEAN", "JUNGLE", "DESERT", "CANDY", "FACTORY", "SKY_GARDENS"]
+const SCENARIOS := ["CITY", "PLAYGROUND", "ZOO", "SPACEPORT", "VOLCANO", "ICE", "OCEAN", "JUNGLE", "DESERT", "CANDY", "FACTORY", "SKY_GARDENS", "TRANSIT"]
 const WORLD_COLORS := {
+	"TRANSIT": [Color("213141"), Color("7abfcc")],
 	"CITY": [Color("0a152c"), Color("42d9ef")], "PLAYGROUND": [Color("241533"), Color("ff8bc9")],
 	"ZOO": [Color("142a26"), Color("9ee686")], "SPACEPORT": [Color("0d1029"), Color("a399ff")],
 	"VOLCANO": [Color("321b23"), Color("ff8053")], "ICE": [Color("142c40"), Color("99dfff")],

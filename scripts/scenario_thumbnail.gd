@@ -13,7 +13,7 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), a)
 	var center := size / 2
 	match scenario_id:
-		"CITY", "FACTORY":
+		"CITY", "FACTORY", "TRANSIT":
 			for i in range(8):
 				var h := 20 + (i * 17) % 42
 				draw_rect(Rect2(10 + i * (size.x - 20) / 8, size.y - h, 15, h), b.darkened(0.5))
