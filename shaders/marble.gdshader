@@ -11,9 +11,10 @@ void fragment() {
 	if (pattern == 4) { mask = mod(floor(UV.x * 12.0) + floor(UV.y * 8.0), 2.0); }
 	if (pattern == 5) { mask = step(0.75, sin(UV.x * 55.0 + sin(UV.y * 28.0) * 4.0)); }
 	vec3 color = mix(primary_color.rgb, secondary_color.rgb, mask);
-	ALBEDO = mix(color * 0.75, vec3(1.0), flash);
-	METALLIC = 0.55;
-	ROUGHNESS = 0.18;
+	float rim = pow(1.0 - max(dot(NORMAL, VIEW), 0.0), 3.0);
+	ALBEDO = mix(color * 0.82, vec3(1.0), flash * 0.65);
+	METALLIC = 0.48;
+	ROUGHNESS = 0.24;
 	SPECULAR = 0.85;
-	EMISSION = color * 0.18 + vec3(flash * 0.7);
+	EMISSION = color * (0.09 + rim * 0.25) + vec3(flash * 0.4);
 }
