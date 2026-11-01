@@ -1,4 +1,4 @@
-﻿class_name TrackView
+class_name TrackView
 extends Node3D
 
 var track: TrackGenerator
@@ -17,8 +17,11 @@ var road_material: ShaderMaterial
 var clock := 0.0
 var city_root: Node3D
 var scenario_id := "CITY"
-var transit: Node3D
 var _materials: Dictionary = {}
+var checkpoint_distances: Array[float] = []
+var checkpoint_counts := [0, 0]
+var effects: RaceEffects
+var racing_marbles: Array[RacingMarble] = []
 
 func view_material(color: Color, emission: float = 0.0, metallic: float = 0.0, roughness: float = 0.4) -> StandardMaterial3D:
 	var key := var_to_bytes([color, emission, metallic, roughness]).hex_encode()
@@ -35,9 +38,13 @@ func set_placement(placing: bool) -> void:
 func _ready() -> void:
 	_create_environment()
 	_create_road()
-	if scenario_id == "CITY":
-		_create_city()
-		_city_details()
+	if DistrictKit.PROFILES.has(scenario_id):
+		var district := DistrictKit.new()
+		district.profile = DistrictKit.PROFILES[scenario_id]
+		district.course_seed = track.seed_value
+		district.economy = Session.quality == "economy"
+		add_child(district)
+		city_root = district
 	else:
 		var scenery := ScenarioWorld.new()
 		scenery.scenario_id = scenario_id
@@ -46,6 +53,9 @@ func _ready() -> void:
 		city_root = scenery
 	_create_hazards()
 	_create_cursors()
+	_create_gates()
+	effects = RaceEffects.new()
+	add_child(effects)
 	_apply_environment()
 
 func _create_environment() -> void:
@@ -60,24 +70,25 @@ func _create_environment() -> void:
 	add_child(environment_node)
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-38, -35, 0)
-	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 100
+	sun.shadow_enabled = Session.quality != "economy"
+	sun.directional_shadow_max_distance = 65
 	add_child(sun)
 
 func _apply_environment() -> void:
 	var environment := environment_node.environment
-	environment.background_color = Color("a4b6c5") if light else Color("060e24")
-	if scenario_id != "CITY":
+	environment.background_color = Color("aebbbf") if light else Color("101d2b")
+	if DistrictKit.PROFILES.has(scenario_id):
+		var profile: DistrictProfile = DistrictKit.PROFILES[scenario_id]
+		environment.background_color = profile.day_sky if light else profile.night_sky
+	else:
 		var world_color: Color = GameCatalog.WORLD_COLORS[scenario_id][0]
 		environment.background_color = world_color.lightened(0.56) if light else world_color
-	environment.ambient_light_color = Color("b4c6d6") if light else Color("91b5d6")
-	environment.ambient_light_energy = 0.45 if light else 0.8
-	environment.fog_light_color = Color("a4b6c5") if light else Color("0b1c39")
-	if scenario_id != "CITY":
-		environment.fog_light_color = environment.background_color
-	environment.fog_density = 0.0015 if light else 0.003
-	sun.light_color = Color("dcefff") if light else Color("89bbef")
-	sun.light_energy = 0.95 if light else 1.1
+	environment.ambient_light_color = Color("c4d1d3") if light else Color("acbfd0")
+	environment.ambient_light_energy = 0.48 if light else 0.72
+	environment.fog_light_color = environment.background_color
+	environment.fog_density = 0.0018 if light else 0.003
+	sun.light_color = Color("ffecd0") if light else Color("b6cad9")
+	sun.light_energy = 1.15 if light else 0.85
 	if road_material:
 		road_material.set_shader_parameter("daylight", light)
 
@@ -85,7 +96,7 @@ func _create_road() -> void:
 	var road := SurfaceTool.new()
 	road.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var edge_batches: Array = [[], []]
-	var glass_batches: Array[Transform3D] = []
+	var guard_batches: Array[Transform3D] = []
 	for i in range(track.points.size() - 1):
 		var a := track.sample_at(track.distances[i])
 		var b := track.sample_at(track.distances[i + 1])
@@ -97,13 +108,13 @@ func _create_road() -> void:
 			road.add_vertex(vertices[vertex_index])
 		for side_index in range(2):
 			var side := -1 if side_index == 0 else 1
-			for height in [0.06, 1.35]:
+			for height in [0.08]:
 				var begin: Vector3 = a.position + a.normal * 5 * side + a.up * height
 				var end: Vector3 = b.position + b.normal * 5 * side + b.up * height
 				edge_batches[side_index].append(NeonGeometry.beam_transform(begin, end, 0.06, 0.06))
-			var begin: Vector3 = a.position + a.normal * 5.05 * side + a.up * 0.65
-			var end: Vector3 = b.position + b.normal * 5.05 * side + b.up * 0.65
-			glass_batches.append(NeonGeometry.beam_transform(begin, end, 0.06, 1.25))
+			var begin: Vector3 = a.position + a.normal * 5.05 * side + a.up * 0.48
+			var end: Vector3 = b.position + b.normal * 5.05 * side + b.up * 0.48
+			guard_batches.append(NeonGeometry.beam_transform(begin, end, 0.24, 0.95))
 	var deck := MeshInstance3D.new()
 	deck.mesh = road.commit()
 	road_material = ShaderMaterial.new()
@@ -114,11 +125,18 @@ func _create_road() -> void:
 		var batch: Array[Transform3D] = []
 		for transform in edge_batches[side_index]:
 			batch.append(transform)
-		NeonGeometry.batch_boxes(self, batch, view_material(Color("29d8f2") if side_index == 0 else Color("ff9c3f"), 3.0))
-	var glass := view_material(Color(0.15, 0.5, 0.7, 0.11), 0, 0.1, 0.15).duplicate() as StandardMaterial3D
-	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	glass.cull_mode = BaseMaterial3D.CULL_DISABLED
-	NeonGeometry.batch_boxes(self, glass_batches, glass)
+		NeonGeometry.batch_boxes(self, batch, view_material(Color("43c6d8") if side_index == 0 else Color("ed66cf"), 0.5))
+	NeonGeometry.batch_boxes(self, guard_batches, view_material(Color("4b555c"), 0, 0.55, 0.6))
+	var fixtures: Array[Transform3D] = []
+	var ribs: Array[Transform3D] = []
+	for distance in range(4, int(track.total_length), 8):
+		var sample := track.sample_at(distance)
+		for side in [-1, 1]:
+			var p: Vector3 = sample.position + sample.normal * 5.05 * side
+			ribs.append(Transform3D(Basis(sample.normal * 0.36, sample.up * 1.35, -sample.tangent * 0.3), p + sample.up * 0.65))
+			fixtures.append(Transform3D(Basis(sample.normal * 0.28, sample.up * 0.09, -sample.tangent * 0.8), p + sample.up * 1.36))
+	NeonGeometry.batch_boxes(self, ribs, view_material(Color("242d34"), 0, 0.4))
+	NeonGeometry.batch_boxes(self, fixtures, view_material(Color("cad178"), 0.4))
 	var supports: Array[Transform3D] = []
 	for distance in range(8, int(track.total_length), 24):
 		var sample := track.sample_at(distance)
@@ -148,53 +166,7 @@ func _create_road() -> void:
 	banner.font_size = 80
 	banner.pixel_size = 0.025
 	add_child(banner)
-
-func _create_city() -> void:
-	city_root = Node3D.new()
-	add_child(city_root)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = track.seed_value + 91081
-	var buildings: Array[Transform3D] = []
-	var cyan_windows: Array[Transform3D] = []
-	var amber_windows: Array[Transform3D] = []
-	var outlines: Array[Transform3D] = []
-	for z_index in range(-1, 21):
-		for side in [-1, 1]:
-			for row in range(2):
-				var x: float = side * (57.0 + row * 32 + rng.randf_range(0, 7))
-				var z := -z_index * 30.0 + rng.randf_range(-5, 5)
-				var height := rng.randf_range(26, 80) + row * 15
-				var width := rng.randf_range(13, 22)
-				var depth := rng.randf_range(16, 23)
-				buildings.append(Transform3D(Basis.IDENTITY.scaled(Vector3(width, height, depth)), Vector3(x, height / 2, z)))
-				outlines.append(Transform3D(Basis.IDENTITY.scaled(Vector3(0.09, height, 0.09)), Vector3(x - side * width / 2, height / 2, z + depth / 2)))
-				for floor_index in range(3, int(height) - 2, 4):
-					for column in range(4):
-						if rng.randf() < 0.60:
-							continue
-						var transform := Transform3D(Basis.IDENTITY.scaled(Vector3(1.2, 1.6, 0.06)), Vector3(x - width * 0.35 + column * width * 0.22, floor_index, z + depth / 2 + 0.04))
-						var side_transform := Transform3D(Basis.IDENTITY.scaled(Vector3(0.06, 1.4, 1.3)), Vector3(x - side * width / 2 - side * 0.04, floor_index, z - depth * 0.35 + column * depth * 0.23))
-						if side == -1:
-							cyan_windows.append(transform)
-							cyan_windows.append(side_transform)
-						else:
-							amber_windows.append(transform)
-							amber_windows.append(side_transform)
-				if row == 0 and z_index % 3 == 0:
-					var sign := Label3D.new()
-					sign.text = ["M / O", "NEON", "OVERDRIVE", "夜 CITY"][posmod(z_index, 4)]
-					sign.position = Vector3(x, minf(height - 4, 32), z + depth / 2 + 0.1)
-					sign.font_size = 90
-					sign.pixel_size = 0.055
-					sign.modulate = Color("44e6ff") if side == -1 else Color("ffad54")
-					city_root.add_child(sign)
-	NeonGeometry.batch_boxes(city_root, buildings, view_material(Color("253249"), 0, 0.45, 0.4))
-	NeonGeometry.batch_boxes(city_root, cyan_windows, view_material(Color("16445e"), 0.5))
-	NeonGeometry.batch_boxes(city_root, amber_windows, view_material(Color("68442e"), 0.5))
-	NeonGeometry.batch_boxes(city_root, outlines, view_material(Color("2c748c"), 1.5))
-	NeonGeometry.box(city_root, Vector3(0, -0.4, -260), Vector3(350, 0.5, 760), view_material(Color("061324"), 0, 0.6, 0.28))
-	for x in [-45, 45]:
-		NeonGeometry.box(city_root, Vector3(x, -0.08, -260), Vector3(0.15, 0.1, 760), view_material(Color("1b5779"), 1))
+	NeonGeometry.consolidate_boxes(self)
 
 func _create_hazards() -> void:
 	for hazard in track.hazards:
@@ -210,45 +182,11 @@ func _create_hazards() -> void:
 			var direction := Vector3(cos(angle), 0, sin(angle))
 			NeonGeometry.beam(node, direction * 0.45 + Vector3.UP * 0.3, direction * 0.9 + Vector3.UP * 1.2, 0.12, 0.12, red)
 
-func _city_details() -> void:
-	var frame := view_material(Color("244b63"), 0, 0.7)
-	var neon := view_material(Color("438eb7"), 0.8)
-	var warm := view_material(Color("b36880"), 0.5)
-	var frames: Array[Transform3D] = []
-	var trims: Array[Transform3D] = []
-	for z in range(30, -620, -40):
-		for side in [-1, 1]:
-			var x: float = side * 46.0
-			frames.append(Transform3D(Basis.IDENTITY.scaled(Vector3(0.6, 24, 0.6)), Vector3(x, 12, z)))
-			trims.append(Transform3D(Basis.IDENTITY.scaled(Vector3(0.12, 8, 0.15)), Vector3(x - side * 0.35, 18, z)))
-			NeonGeometry.box(city_root, Vector3(x - side * 1.2, 24, z), Vector3(3, 0.15, 0.5), neon)
-			# Layered rooftop antennas and stepped building crowns.
-			NeonGeometry.box(city_root, Vector3(side * 62, 54, z - 5), Vector3(8, 3, 11), frame)
-			NeonGeometry.box(city_root, Vector3(side * 62, 60, z - 5), Vector3(0.25, 10, 0.25), neon)
-			NeonGeometry.box(city_root, Vector3(side * 49, 29, z - 12), Vector3(0.4, 8, 4), warm)
-			var shop := Label3D.new()
-			shop.text = "ION\nLAB" if posmod(z, 80) == 30 else "M/O\nZEN"
-			shop.position = Vector3(side * 48.7, 29, z - 12)
-			shop.rotation.y = -side * PI / 2
-			shop.font_size = 80
-			shop.pixel_size = 0.018
-			shop.modulate = Color("f5bedb")
-			city_root.add_child(shop)
-	NeonGeometry.batch_boxes(city_root, frames, frame)
-	NeonGeometry.batch_boxes(city_root, trims, neon)
-	NeonGeometry.box(city_root, Vector3(-43, 41, -260), Vector3(2.6, 0.4, 650), frame)
-	NeonGeometry.box(city_root, Vector3(-43, 41.3, -260), Vector3(0.1, 0.1, 650), neon)
-	transit = Node3D.new()
-	city_root.add_child(transit)
-	NeonGeometry.box(transit, Vector3.ZERO, Vector3(2.5, 2.5, 12), view_material(Color("637c98"), 0, 0.6))
-	NeonGeometry.box(transit, Vector3(0, 0.6, -1), Vector3(2.6, 0.7, 8), neon)
-	NeonGeometry.box(transit, Vector3(0, -0.9, 0), Vector3(2.6, 0.15, 12), warm)
-
 func _create_cursors() -> void:
 	for i in range(2):
 		var node := Node3D.new()
 		add_child(node)
-		var tint := Color("34e4ef") if i == 0 else Color("ffb14a")
+		var tint := Color("43c6d8") if i == 0 else Color("ed66cf")
 		NeonGeometry.ring(node, 2.4, 0.13, view_material(tint, 3))
 		NeonGeometry.box(node, Vector3(0, 4, 0), Vector3(0.15, 8, 0.15), view_material(tint, 2))
 		var tag := Label3D.new()
@@ -264,8 +202,11 @@ func _create_cursors() -> void:
 
 func _process(delta: float) -> void:
 	clock += delta
-	if transit:
-		transit.position = Vector3(-43, 43, 45 - fmod(clock * 14, 650))
+	for marble in racing_marbles:
+		var index := marble.player_index
+		if checkpoint_counts[index] < checkpoint_distances.size() and marble.progress >= checkpoint_distances[checkpoint_counts[index]]:
+			checkpoint_counts[index] += 1
+			feedback(marble.position, marble.tint, 2.5)
 	for i in range(cursor_nodes.size()):
 		cursor_nodes[i].visible = i < cursors.size()
 		if i < cursors.size():
@@ -276,9 +217,40 @@ func _process(delta: float) -> void:
 			ring.position = effect.position
 			effect.node = ring
 		effect.time -= delta
-		effect.node.scale = Vector3.ONE * maxf(0.1, (1 - effect.time / 0.5) * 16)
+		effect.node.scale = Vector3.ONE * maxf(0.1, (1 - effect.time / 0.5) * effect.get("radius", 8.0))
 		if effect.time <= 0:
 			effect.node.queue_free()
 	pulse_positions = pulse_positions.filter(func(effect): return effect.time > 0)
+
+func feedback(at: Vector3, color: Color, radius: float = 2.0) -> void:
+	if pulse_positions.size() < 10:
+		pulse_positions.append({"position": at, "time": 0.5, "color": color, "radius": radius})
+	if effects:
+		effects.burst(at, color)
+
+func _create_gates() -> void:
+	var steel := view_material(Color("4b555c"), 0, 0.55, 0.5)
+	var mark := view_material(Color("ccd472"), 0.5)
+	for index in [1, 3, 5]:
+		var distance: float = track.sections[index].end
+		checkpoint_distances.append(distance)
+		var sample := track.sample_at(distance)
+		var gate := Node3D.new()
+		gate.position = sample.position
+		gate.basis = Basis(sample.normal, sample.up, -sample.tangent)
+		add_child(gate)
+		for side in [-1, 1]:
+			NeonGeometry.box(gate, Vector3(side * 5.55, 3, 0), Vector3(0.7, 6, 0.65), steel)
+			NeonGeometry.box(gate, Vector3(side * 5.55, 5.6, 0.35), Vector3(0.32, 0.5, 0.05), mark)
+		NeonGeometry.box(gate, Vector3(0, 6.1, 0), Vector3(11.8, 0.65, 0.7), steel)
+		var title := Label3D.new()
+		title.text = "%s  %02d    /    M / O" % [tr("TRACK_SECTOR"), checkpoint_distances.size()]
+		title.position = Vector3(0, 6.1, 0.38)
+		title.font_size = 48
+		title.pixel_size = 0.013
+		title.outline_size = 0
+		title.modulate = Color("e5e8cb")
+		gate.add_child(title)
+		NeonGeometry.consolidate_boxes(gate)
 
 
