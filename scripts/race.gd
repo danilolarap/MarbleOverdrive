@@ -59,6 +59,8 @@ func _ready() -> void:
 		marble.power_fired.connect(_on_power)
 		marble.recovered.connect(func(): notification.emit("RECOVERY"))
 		marbles.append(marble)
+		marble.damaged.connect(func(at, tint): view.feedback(at, tint, 1.5))
+	view.racing_marbles = marbles
 	view.cursor_colors = [marbles[0].tint, marbles[1].tint]
 	_update_camera(1.0)
 
@@ -93,8 +95,10 @@ func _physics_process(delta: float) -> void:
 		race_time += delta
 		for marble in marbles:
 			for item in items:
-				if item.try_affect(marble) and audio:
-					audio.tone(180 if item.kind == "BARRIER" else 510)
+				if item.try_affect(marble):
+					view.feedback(item.position + Vector3.UP * 0.3, GameCatalog.ITEMS[item.kind].color)
+					if audio:
+						audio.tone(180 if item.kind == "BARRIER" else 510)
 			for i in range(track.hazards.size()):
 				var hazard: Dictionary = track.hazards[i]
 				if marble.position.distance_to(hazard.position) < hazard.radius + RacingMarble.RADIUS and race_time - marble.last_hit.get(i, -10.0) > 1.1:
@@ -186,7 +190,7 @@ func _on_power(marble: RacingMarble) -> void:
 		audio.tone(840, 0.18)
 	if marble.power_id != "EMP":
 		return
-	view.pulse_positions.append({"position": marble.position, "time": 0.5, "color": marble.tint})
+	view.feedback(marble.position, marble.tint, 8.0)
 	var rival := marbles[1 - marble.player_index]
 	if rival.position.distance_to(marble.position) <= 16 and not rival.is_protected():
 		rival.damage(12)
@@ -217,6 +221,9 @@ func _check_winner() -> void:
 		marble.racing = false
 		marble.freeze = true
 	Session.record_result(winner)
+	for marble in marbles:
+		if winner < 0 or marble.player_index == winner:
+			view.feedback(marble.position, marble.tint, 5.0)
 	completed.emit(winner, reason, race_time)
 
 func _process(delta: float) -> void:
