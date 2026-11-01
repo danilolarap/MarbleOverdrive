@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DistrictProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/district_profile.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+code = "T03"
+transit_hub = true
+tower_height = 1.35
+spacing = 44.0
+metal = Color(0.26, 0.32, 0.37, 1)
+concrete = Color(0.56, 0.61, 0.62, 1)
+accent = Color(0.48, 0.75, 0.80, 1)
+warm = Color(0.82, 0.83, 0.59, 1)
+night_sky = Color(0.13, 0.19, 0.26, 1)
+day_sky = Color(0.68, 0.77, 0.82, 1)
