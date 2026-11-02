@@ -58,45 +58,94 @@ func menu(ui) -> void:
 func profiles(ui) -> void:
 	var root = ui._clear("profiles")
 	ui.header(root, tr("PILOTS"), tr("PROFILE_NOTE"))
+
 	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 24)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.add_child(row)
+
 	for i in range(2):
 		var index := i
 		var col = ui.card(row, Session.players[i].color)
-		col.add_child(ui.label(tr("PLAYER%d" % (i + 1)), 20, ui.accent))
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_theme_constant_override("separation", 16)
+
+		# Encabezado del piloto
+		var pilot_header := HBoxContainer.new()
+		col.add_child(pilot_header)
+
+		var pilot_title = ui.label(
+			"P0%d  /  %s" % [i + 1, tr("PLAYER%d" % (i + 1))],
+			16,
+			ui.accent
+		)
+		pilot_header.add_child(pilot_title)
+
+		# Identidad del perfil
 		var heading := HBoxContainer.new()
+		heading.add_theme_constant_override("separation", 12)
 		col.add_child(heading)
+
 		var badge := MarbleBadge.new()
 		badge.player_index = i
 		heading.add_child(badge)
-		var name = ui.label(Session.player_name(i), 30)
+
+		var name = ui.label(Session.player_name(i), 28)
 		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		heading.add_child(name)
+
+		# Estadísticas
 		var data: Dictionary = Session.profiles[Session.player_name(i)]
-		col.add_child(ui.paragraph(tr("PERSONAL_STATS") % [data.matches, data.wins, data.losses, data.draws], 17))
-		col.add_child(ui.label(tr("PROFILE_SELECT"), 16, ui.muted))
+		col.add_child(ui.label(tr("PERSONAL_STATS") % [
+			data.matches,
+			data.wins,
+			data.losses,
+			data.draws
+		], 16))
+
+		var separator := HSeparator.new()
+		col.add_child(separator)
+
+		# Selector de perfil
+		col.add_child(ui.label(tr("PROFILE_SELECT"), 15, ui.muted))
+
 		var picker := OptionButton.new()
+		picker.custom_minimum_size.y = 46
+		picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
 		var names: Array = Session.profiles.keys()
 		for profile_name in names:
 			picker.add_item(profile_name)
-			picker.set_item_disabled(picker.item_count - 1, profile_name == Session.player_name(1 - i))
+			picker.set_item_disabled(
+				picker.item_count - 1,
+				profile_name == Session.player_name(1 - i)
+			)
+
 		picker.selected = names.find(Session.player_name(i))
 		col.add_child(picker)
+
 		picker.item_selected.connect(func(choice):
 			if not Session.select_profile(names[choice], index):
-				ui.show_error("PROFILE_CONFLICT"))
+				ui.show_error("PROFILE_CONFLICT")
+		)
+
+		# Crear perfil
 		var input := LineEdit.new()
 		input.add_to_group("pilot_profile_names")
 		input.set_meta("pilot", i)
 		input.placeholder_text = tr("NAME")
 		input.max_length = 20
+		input.custom_minimum_size.y = 46
 		col.add_child(input)
+
 		var create = ui.button(tr("PROFILE_CREATE"), func():
 			if not Session.create_profile(input.text, index):
-				ui.show_error("NAME_ERROR"))
+				ui.show_error("NAME_ERROR")
+		)
 		create.add_to_group("profile_create_buttons")
 		create.set_meta("pilot", i)
 		col.add_child(create)
+
 	var prefs = ui.card(root)
 	ui.language_row(prefs)
 	ui.add_notice(root)
