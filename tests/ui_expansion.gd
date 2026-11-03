@@ -24,14 +24,12 @@ func find_widget(group: String, pilot: int, slot: int = -1) -> Node:
 			return widget
 	return null
 
-func choose_item(pilot: int, slot: int, id: String) -> void:
-	var picker := find_widget("loadout_pickers", pilot, slot) as OptionButton
-	for i in range(picker.item_count):
-		if picker.get_item_metadata(i) == id:
-			picker.selected = i
-			picker.item_selected.emit(i)
+func press_card(group: String, pilot: int, id: String) -> void:
+	for widget in get_tree().get_nodes_in_group(group):
+		if widget.get_meta("pilot") == pilot and widget.get_meta("id", widget.get_meta("design", "")) == id:
+			widget.pressed.emit()
 			return
-	check(false, "Missing item in categorized picker: " + id)
+	check(false, "Missing card %s for pilot %d in %s" % [id, pilot, group])
 
 func _ready() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -53,22 +51,47 @@ func run() -> void:
 	Session.language = "es"
 	Session.update_preferences()
 	await snap("final-profiles")
+	# Step 1: the workshop picks finishes and colours with preview tiles, not lists.
 	host.ui.show_setup()
 	await settle()
-	for tabs in get_tree().get_nodes_in_group("pilot_workshop_tabs"):
-		tabs.current_tab = 1
-	choose_item(0, 1, "BOOST")
-	check(Session.players[0].items[1] == "MAGNET", "Duplicate item was not rejected by the UI")
-	choose_item(0, 2, "SHIELD")
-	check(host.ui.workshop.start_button.disabled, "Start remained enabled over budget")
-	await snap("loadout-over-budget")
-	choose_item(0, 0, "GRIP")
-	check(not host.ui.workshop.start_button.disabled, "Start did not re-enable for a valid budget")
-	check(host.ui.notice.text != tr("LOADOUT_ERROR"), "Budget warning persisted after fixing the loadout")
-	await snap("final-strategy")
-	Session.players[0].items = GameCatalog.DEFAULT_LOADOUT.duplicate()
-	host.ui.show_setup()
+	check(get_tree().get_nodes_in_group("design_tiles").size() == GameCatalog.PATTERNS.size() * 2, "Every finish needs a preview tile per pilot")
+	press_card("design_tiles", 1, "GALAXY")
+	check(Session.players[1].pattern == "GALAXY", "Design tile did not select the finish")
+	var swatch: Button = get_tree().get_nodes_in_group("secondary_swatches").filter(func(w): return w.get_meta("pilot") == 0)[3]
+	swatch.pressed.emit()
+	check(Session.players[0].secondary == GameCatalog.PALETTE[3], "Secondary colour swatch did not apply")
 	await snap("final-workshop")
+	get_tree().get_nodes_in_group("workshop_next")[0].pressed.emit()
+	await settle()
+	check(host.ui.screen == "strategy", "Workshop did not continue to the strategy screen")
+	# Step 2: strategy cards. Defaults BOOST + MAGNET + OIL cost exactly 6.
+	check(not host.ui.workshop.start_button.disabled, "Default loadout must be startable")
+	press_card("power_cards", 0, "PHASE")
+	check(Session.players[0].power == "PHASE", "Power card did not select the power")
+	press_card("loadout_cards", 0, "BOOST")
+	check(Session.players[0].items == ["MAGNET", "OIL"], "Clicking a chosen card must remove it")
+	check(host.ui.workshop.start_button.disabled, "Start must wait for three items")
+	press_card("loadout_cards", 0, "SHIELD")
+	check(Session.players[0].items == ["MAGNET", "OIL", "SHIELD"], "Card did not fill the next slot")
+	check(not host.ui.workshop.start_button.disabled, "Start did not enable for a valid loadout")
+	press_card("loadout_cards", 0, "REPAIR")
+	check(Session.players[0].items.size() == 3, "A fourth item was accepted")
+	press_card("loadout_cards", 0, "OIL")
+	press_card("loadout_cards", 0, "BARRIER")
+	check(not "BARRIER" in Session.players[0].items, "An item over the energy budget was accepted")
+	check(host.ui.workshop.start_button.disabled, "Start remained enabled with two items")
+	await snap("loadout-over-budget")
+	press_card("loadout_cards", 0, "GRIP")
+	check(GameCatalog.valid_loadout(Session.players[0].items), "Valid loadout not reached")
+	check(not host.ui.workshop.start_button.disabled, "Start did not re-enable for a valid budget")
+	check(host.ui.notice.text != tr("NO_ENERGY_ERROR"), "Budget warning persisted after fixing the loadout")
+	await snap("final-strategy")
+	host.ui._back()
+	check(host.ui.screen == "setup", "Escape on strategy must return to the workshop")
+	Session.players[0].items = GameCatalog.DEFAULT_LOADOUT.duplicate()
+	Session.players[0].power = "EMP"
+	host.ui.show_strategy()
+	await settle()
 	for category in ["EQUIPMENT", "TRAPS", "POWERS"]:
 		host.ui.guide_category = category
 		host.ui.show_guide("setup")
@@ -102,5 +125,5 @@ func run() -> void:
 	host.clear_race()
 	host.queue_free()
 	await settle()
-	print("PASS: profile buttons, two workshop tabs, duplicate rejection, energy gating, category guides and both planning themes" if errors == 0 else "FAIL: workshop UI")
+	print("PASS: profile buttons, design tiles, strategy cards, slot and energy gating, category guides and both planning themes" if errors == 0 else "FAIL: workshop UI")
 	get_tree().quit(0 if errors == 0 else 1)
