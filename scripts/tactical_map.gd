@@ -8,7 +8,8 @@ var cached_count := -1
 var font: Font
 const HALF_ROAD := 23.0
 var _layout_size := Vector2(-1, -1)
-var _path := PackedVector2Array()
+var _runs: Array[PackedVector2Array] = []
+var _gap_runs: Array[PackedVector2Array] = []
 var _bands: Array[PackedVector2Array] = []
 var _hazards := PackedVector2Array()
 var _items := PackedVector2Array()
@@ -44,12 +45,23 @@ func _prepare_geometry() -> void:
 	if _layout_size == size:
 		return
 	_layout_size = size
-	_path.clear()
+	_runs.clear()
+	_gap_runs.clear()
 	_bands.clear()
 	_hazards.clear()
 	_items.clear()
-	for point in race.track.points:
-		_path.append(center_position(point))
+	# The road is drawn in runs so that every gap stays visibly open.
+	var track := race.track
+	var current := PackedVector2Array([center_position(track.points[0])])
+	var in_gap := false
+	for i in range(track.points.size() - 1):
+		var gap_segment := track.is_gap_segment(i)
+		if gap_segment != in_gap:
+			(_gap_runs if in_gap else _runs).append(current)
+			current = PackedVector2Array([current[-1]])
+			in_gap = gap_segment
+		current.append(center_position(track.points[i + 1]))
+	(_gap_runs if in_gap else _runs).append(current)
 	for lane in range(2):
 		var band := PackedVector2Array()
 		for distance in range(0, int(race.track.total_length), 4):
@@ -112,8 +124,13 @@ func _draw() -> void:
 		cache_validity()
 	_prepare_geometry()
 	# Opaque surfaces and dark outlines never depend on scene lighting/bloom.
-	draw_polyline(_path, Color("163149") if Session.light else Color("7197b1"), HALF_ROAD * 2 + 5, true)
-	draw_polyline(_path, Color("354c60") if Session.light else Color("223b50"), HALF_ROAD * 2, true)
+	for run in _runs:
+		draw_polyline(run, Color("163149") if Session.light else Color("7197b1"), HALF_ROAD * 2 + 5, true)
+	for run in _runs:
+		draw_polyline(run, Color("354c60") if Session.light else Color("223b50"), HALF_ROAD * 2, true)
+	for run in _gap_runs:
+		for i in range(run.size() - 1):
+			draw_dashed_line(run[i], run[i + 1], Color("ffb347"), 4, 8, true)
 	for lane in range(2):
 		draw_polyline(_bands[lane], Color(Session.players[lane].color, 0.17), 17, true)
 	for cell in cells:

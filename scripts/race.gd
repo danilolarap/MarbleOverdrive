@@ -154,7 +154,7 @@ func can_place(point: Vector3, player_index: int = -1, item_id: String = "") -> 
 		var lane := GameCatalog.target_lane(player_index, id)
 		if absf(offset) < 0.8 or (offset < 0) != (lane == 0):
 			return false
-	if sample.distance < 26 or sample.distance > track.total_length - 24:
+	if sample.distance < 26 or sample.distance > track.total_length - 24 or track.is_placement_blocked(sample.distance):
 		return false
 	if point.distance_to(sample.position) > 3.1:
 		return false

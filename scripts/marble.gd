@@ -33,6 +33,7 @@ var elapsed := 0.0
 var last_hit := {}
 var recovery_position := Vector3.ZERO
 var recover_pending := false
+var recovery_progress := 0.0
 var shell: MeshInstance3D
 var rotor: Node3D
 var surface: ShaderMaterial
@@ -108,7 +109,7 @@ func _ready() -> void:
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	if recover_pending:
 		state.transform.origin = recovery_position
-		state.linear_velocity = track.sample_at(progress).tangent * 12.0
+		state.linear_velocity = track.sample_at(recovery_progress).tangent * 12.0
 		recover_pending = false
 
 func _physics_process(delta: float) -> void:
@@ -148,10 +149,14 @@ func _physics_process(delta: float) -> void:
 		apply_central_force(tangent * clampf((target - linear_velocity.dot(tangent)) * 2.5, -ACCELERATION, ACCELERATION))
 	# Actual gravity/contact; downforce is disabled during an actual jump.
 	if airborne <= 0:
-		apply_central_force(-sample.up * 15.0)
+		# Over a gap the pull is plain vertical, so the flight matches TrackAI's landing maths.
+		apply_central_force((Vector3.DOWN if track.is_gap(progress) else -sample.up) * 15.0)
 	stuck_time = stuck_time + delta if linear_velocity.length() < 3 and not braking else 0.0
 	if stuck_time > 2.0 or position.y < sample.position.y - 5 or absf(error) > 8:
-		recovery_position = sample.position + normal * lane + sample.up * (RADIUS + 0.18)
+		# A failed jump restarts before the lip, with enough run-up to clear it.
+		recovery_progress = track.recovery_distance(sample.distance)
+		var rescue := track.sample_at(recovery_progress)
+		recovery_position = rescue.position + rescue.normal * lane + rescue.up * (RADIUS + 0.18)
 		recover_pending = true
 		stuck_time = 0
 		recovered.emit()
