@@ -1,20 +1,32 @@
 shader_type spatial;
+#include "res://shaders/marble_designs.gdshaderinc"
 uniform vec4 primary_color : source_color = vec4(0.1, 0.9, 1.0, 1.0);
 uniform vec4 secondary_color : source_color = vec4(1.0);
 uniform int pattern = 0;
 uniform float flash = 0.0;
+varying vec3 object_dir;
+
+void vertex() {
+	object_dir = normalize(VERTEX);
+	if (pattern == MD_GEM) {
+		VERTEX = design_vertex(pattern, VERTEX);
+		NORMAL = design_normal(pattern, object_dir);
+	}
+}
+
 void fragment() {
-	float mask = 0.0;
-	if (pattern == 1) { mask = step(0.55, fract(UV.x * 10.0 + UV.y * 3.0)); }
-	if (pattern == 2) { mask = step(0.5, UV.x); }
-	if (pattern == 3) { mask = step(0.6, fract(UV.y * 9.0)); }
-	if (pattern == 4) { mask = mod(floor(UV.x * 12.0) + floor(UV.y * 8.0), 2.0); }
-	if (pattern == 5) { mask = step(0.75, sin(UV.x * 55.0 + sin(UV.y * 28.0) * 4.0)); }
-	vec3 color = mix(primary_color.rgb, secondary_color.rgb, mask);
+	vec3 o = normalize(object_dir);
+	vec3 albedo;
+	vec3 emission;
+	float metallic;
+	float roughness;
+	design_surface(pattern, o, primary_color.rgb, secondary_color.rgb, TIME, albedo, emission, metallic, roughness);
+	// Relief and facets live in object space, so they roll with the marble.
+	NORMAL = normalize((VIEW_MATRIX * (MODEL_MATRIX * vec4(design_normal(pattern, o), 0.0))).xyz);
 	float rim = pow(1.0 - max(dot(NORMAL, VIEW), 0.0), 3.0);
-	ALBEDO = mix(color * 0.82, vec3(1.0), flash * 0.65);
-	METALLIC = 0.48;
-	ROUGHNESS = 0.24;
+	ALBEDO = mix(albedo * 0.9, vec3(1.0), flash * 0.65);
+	METALLIC = metallic;
+	ROUGHNESS = roughness;
 	SPECULAR = 0.85;
-	EMISSION = color * (0.09 + rim * 0.25) + vec3(flash * 0.4);
+	EMISSION = emission + albedo * (0.06 + rim * 0.22) + vec3(flash * 0.4);
 }

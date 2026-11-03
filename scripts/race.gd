@@ -4,6 +4,8 @@ extends Node3D
 signal completed(winner: int, reason: String, race_time: float)
 signal notification(message: String)
 const PLACEMENT_DURATION := 30.0
+const ITEM_SOUNDS := {"BOOST": "boost", "REPAIR": "repair", "SHIELD": "shield", "GRIP": "grip", "MAGNET": "hit_magnet", "BARRIER": "hit_barrier", "OIL": "hit_oil", "SHOCK": "hit_shock"}
+const POWER_SOUNDS := {"EMP": "emp", "JUMP": "jump", "PHASE": "phase"}
 var track := TrackGenerator.new()
 var world: Node3D
 var view: TrackView
@@ -21,6 +23,7 @@ var audio: Node
 var valid := false
 var camera_initialized := false
 var camera_target := Vector3.ZERO
+var _in_gap := [false, false]
 
 func initialize(course_seed: int) -> bool:
 	valid = track.generate(course_seed)
@@ -57,7 +60,9 @@ func _ready() -> void:
 		marble.position = start.position + start.normal * (-1.65 if index == 0 else 1.65) + start.up * (RacingMarble.RADIUS + 0.06)
 		world.add_child(marble)
 		marble.power_fired.connect(_on_power)
-		marble.recovered.connect(func(): notification.emit("RECOVERY"))
+		marble.recovered.connect(func():
+			_sound("recover")
+			notification.emit("RECOVERY"))
 		marbles.append(marble)
 		marble.damaged.connect(func(at, tint): view.feedback(at, tint, 1.5))
 	view.racing_marbles = marbles
@@ -68,7 +73,10 @@ func _physics_process(delta: float) -> void:
 	if not valid or phase == "finished":
 		return
 	if phase == "placement":
+		var second_before := ceili(placement_time)
 		placement_time -= delta
+		if ceili(placement_time) != second_before and placement_time > 0 and second_before <= 5:
+			_sound("countdown", 1.0 if second_before > 1 else 1.5)
 		for i in range(2):
 			var left := KEY_A if i == 0 else KEY_LEFT
 			var right := KEY_D if i == 0 else KEY_RIGHT
@@ -90,20 +98,20 @@ func _physics_process(delta: float) -> void:
 				marble.racing = true
 				marble.freeze = false
 			if audio:
-				audio.tone(740, 0.25)
+				audio.play("go")
 	else:
 		race_time += delta
 		for marble in marbles:
 			for item in items:
 				if item.try_affect(marble):
 					view.feedback(item.position + Vector3.UP * 0.3, GameCatalog.ITEMS[item.kind].color)
-					if audio:
-						audio.tone(180 if item.kind == "BARRIER" else 510)
+					_sound(ITEM_SOUNDS.get(item.kind, "ui_select"))
 			for i in range(track.hazards.size()):
 				var hazard: Dictionary = track.hazards[i]
 				if marble.position.distance_to(hazard.position) < hazard.radius + RacingMarble.RADIUS and race_time - marble.last_hit.get(i, -10.0) > 1.1:
 					marble.last_hit[i] = race_time
 					marble.damage(18)
+					_sound("hazard")
 					if not marble.is_protected():
 						marble.slowed = 0.5
 		_check_winner()
@@ -120,8 +128,7 @@ func place_item(index: int) -> bool:
 	var point := cursor_location(index)
 	if not can_place(point, index):
 		messages[index] = "INVALID"
-		if audio:
-			audio.tone(110)
+		_sound("invalid")
 		return false
 	var item := TacticalItem.new()
 	item.position = point
@@ -134,8 +141,7 @@ func place_item(index: int) -> bool:
 	placed[index] += 1
 	cursor_offsets[index] = -1.65 if next_target(index) == 0 else 1.65
 	messages[index] = "PLACED"
-	if audio:
-		audio.tone(400 + index * 160)
+	_sound("place_trap" if GameCatalog.is_trap(item.kind) else "place_equipment", 1.0 + index * 0.06)
 	return true
 
 func next_item(index: int) -> String:
@@ -145,29 +151,41 @@ func next_target(index: int) -> int:
 	return GameCatalog.target_lane(index, next_item(index))
 
 func can_place(point: Vector3, player_index: int = -1, item_id: String = "") -> bool:
+	return placement_issue(point, player_index, item_id) == ""
+
+## Why an item cannot go at `point` (a translation key), or "" when it can.
+func placement_issue(point: Vector3, player_index: int = -1, item_id: String = "") -> String:
 	var sample := track.closest(point)
 	var offset: float = (point - sample.position).dot(sample.normal)
 	if player_index >= 0:
 		if placed[player_index] >= 3:
-			return false
+			return "ISSUE_DONE"
 		var id := next_item(player_index) if item_id == "" else item_id
 		var lane := GameCatalog.target_lane(player_index, id)
-		if absf(offset) < 0.8 or (offset < 0) != (lane == 0):
-			return false
-	if sample.distance < 26 or sample.distance > track.total_length - 24 or track.is_placement_blocked(sample.distance):
-		return false
+		if absf(offset) < 0.8:
+			return "ISSUE_CENTER"
+		if (offset < 0) != (lane == 0):
+			return "ISSUE_HALF"
+	if sample.distance < 26 or sample.distance > track.total_length - 24:
+		return "ISSUE_ENDS"
+	if track.is_placement_blocked(sample.distance):
+		return "ISSUE_GAP"
 	if point.distance_to(sample.position) > 3.1:
-		return false
+		return "ISSUE_EDGE"
 	# Each obstacle retains a continuous route around it on the 10 m deck.
 	for item in items:
 		var other := track.closest(item.position)
 		var other_offset: float = (item.position - other.position).dot(other.normal)
 		if signf(offset) == signf(other_offset) and point.distance_to(item.position) < 8:
-			return false
+			return "ISSUE_ITEM"
 	for hazard in track.hazards:
 		if point.distance_to(hazard.position) < 8:
-			return false
-	return true
+			return "ISSUE_HAZARD"
+	return ""
+
+func _sound(id: String, pitch: float = 1.0) -> void:
+	if audio and audio.has_method("play"):
+		audio.play(id, pitch)
 
 func _input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
@@ -182,12 +200,10 @@ func _input(event: InputEvent) -> void:
 			if event.is_action_pressed("p%d_power" % (index + 1)):
 				marbles[index].activate_power()
 			elif event.is_action_pressed("p%d_brake" % (index + 1)):
-				if audio:
-					audio.tone(240, 0.08)
+				_sound("brake")
 
 func _on_power(marble: RacingMarble) -> void:
-	if audio:
-		audio.tone(840, 0.18)
+	_sound(POWER_SOUNDS.get(marble.power_id, "jump"))
 	if marble.power_id != "EMP":
 		return
 	view.feedback(marble.position, marble.tint, 8.0)
@@ -221,6 +237,9 @@ func _check_winner() -> void:
 		marble.racing = false
 		marble.freeze = true
 	Session.record_result(winner)
+	_sound("finish")
+	if audio and audio.has_method("stop_rolling"):
+		audio.stop_rolling()
 	for marble in marbles:
 		if winner < 0 or marble.player_index == winner:
 			view.feedback(marble.position, marble.tint, 5.0)
@@ -229,6 +248,20 @@ func _check_winner() -> void:
 func _process(delta: float) -> void:
 	if valid and is_instance_valid(camera):
 		_update_camera(delta)
+	if not valid or marbles.size() < 2:
+		return
+	for i in range(2):
+		var marble := marbles[i]
+		var over_gap := phase == "race" and track.is_gap(marble.progress)
+		if over_gap != _in_gap[i]:
+			_sound("gap" if over_gap else "land", 1.0 + i * 0.05)
+			_in_gap[i] = over_gap
+		if audio and audio.has_method("set_rolling"):
+			audio.set_rolling(i, marble.linear_velocity.length(), phase == "race" and not over_gap and marble.airborne <= 0)
+
+func _exit_tree() -> void:
+	if audio and audio.has_method("stop_rolling"):
+		audio.stop_rolling()
 
 func _update_camera(delta: float) -> void:
 	var target: Vector3

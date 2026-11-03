@@ -51,9 +51,9 @@ Los datos viven en `user://profiles.cfg`, normalmente `%APPDATA%/Godot/app_userd
 ## Preparación y lados
 
 1. En Jugar duelo local, elige un escenario y configura cada jugador.
-2. **Taller de canicas:** 12 colores principales/secundarios y 6 acabados: sólido, líneas, dos colores, bandas orbitales, cuadros y circuito eléctrico. La vista previa y la canica 3D usan los mismos colores y patrón.
-3. **Estrategia de carrera:** un poder y tres objetos distintos, con un máximo de **6 puntos de energía**. No se puede iniciar una combinación inválida.
-4. En los 30 segundos de colocación, el cursor cambia automáticamente al lado permitido para el siguiente objeto. Las **trampas van a la mitad rival**; el **equipo va a la propia**. No puedes cruzar el cursor a la mitad incorrecta.
+2. **Taller de canicas (paso 1 de 2):** 12 colores principales/secundarios en muestras y **12 diseños** elegibles con recuadros de vista previa animada: sólido, líneas, dos colores, bandas orbitales, cuadros, circuito eléctrico, galaxia, escamas hexagonales, núcleo de lava, gema facetada, ojo de gato y fibra de carbono. Varios tienen relieve real y la gema tiene silueta facetada. La vista previa y la canica 3D usan el mismo shader (`shaders/marble_designs.gdshaderinc`), así que el recuadro muestra exactamente el acabado de carrera.
+3. **Estrategia de carrera (paso 2 de 2, pantalla propia):** tarjetas con icono para el poder y los objetos, separados en Equipo y Trampas. Al pulsar una tarjeta se añade al siguiente espacio (1, 2, 3); al pulsarla otra vez se quita. La barra de energía muestra el gasto, y las tarjetas que no caben se atenúan. Máximo **6 puntos de energía**; no se puede iniciar una combinación inválida.
+4. En los 30 segundos de colocación, cada panel muestra el icono del siguiente objeto, a qué mitad va, el estado de los tres objetos (colocado, siguiente, pendiente) y el motivo concreto si no se puede colocar (mitad incorrecta, muy cerca de un objeto, de un peligro, de un hueco, de la salida o de la meta). El cursor del mapa lleva el icono del objeto, la mitad de destino se resalta y una barra marca el tiempo, en rojo los últimos 5 s. El cursor cambia automáticamente al lado permitido para el siguiente objeto. Las **trampas van a la mitad rival**; el **equipo va a la propia**. No puedes cruzar el cursor a la mitad incorrecta.
 5. Las bandas muestran los lados de cada piloto. Los puntos de color y OK indican colocaciones válidas; rojo/X y las rayas indican bloqueos. No se puede colocar cerca de salida, meta, peligros u otro objeto en la misma mitad. Mitades distintas pueden usar la misma altura de pista si dejan la separación física necesaria.
 6. Cada objeto se consume una sola vez y afecta exclusivamente a su destinatario. No hay robo de turbo ni daño de tus propias trampas. Salto y Fase atraviesan los objetos sin consumirlos.
 
@@ -129,7 +129,7 @@ $env:APPDATA = Join-Path (Get-Location) 'tools/test-data'
 
 - `smoke.tscn`: 300 semillas deterministas, perfiles, locales, temas, controles, 30 s, pausa, salto, freno continuo y en pendiente, resultados y ocho carreras completas.
 - `expansion.tscn`: dos perfiles distintos y estadísticas, persistencia de diseños, 16 combinaciones objeto/dueño, lados, destinatarios, costes y carreras completas en los 13 escenarios.
-- `ui_expansion.tscn`: botones reales de perfiles, pestañas del taller, rechazo de duplicados, bloqueo/desbloqueo por presupuesto y guías. Con render gráfico guarda capturas.
+- `ui_expansion.tscn`: botones reales de perfiles, recuadros de diseño y muestras de color, tarjetas de poder y objetos, espacios y energía (quitar, cuarto objeto, sobrecoste), navegación taller ↔ estrategia y guías. Con render gráfico guarda capturas.
 - `display.tscn`: tres proporciones de ventana y pantalla completa exacta al monitor; requiere render gráfico.
 - `world_capture.tscn`: captura los 13 mundos, perfiles, taller, guía y selector; requiere render gráfico.
 - `stability.tscn`: doce ciclos gráficos de menús, temas, colocación, pausa, carrera, resultados y audio.
@@ -144,7 +144,7 @@ Para pruebas gráficas omite `--headless` y cambia la escena. Las capturas queda
 
 ## Alcance
 
-Versión estilizada con geometría original de Godot. Los escenarios son decorados propios de un prototipo, no recreaciones fotorrealistas. No requiere modelos, música o texturas externos. El sonido usa clips PCM sintetizados y almacenados en memoria. No incluye red, campaña, mandos ni autenticación segura. El freno sostenido y la recuperación son de estilo arcade; la esfera visual gira, mientras se bloquea la rotación del cuerpo para estabilizar la física.
+Versión estilizada con geometría original de Godot. Los escenarios son decorados propios de un prototipo, no recreaciones fotorrealistas. No requiere modelos, música o texturas externos. El sonido (`scripts/audio.gd`) sintetiza en código 24 efectos con nombre (interfaz, colocación, cuenta atrás, cada objeto y poder, peligros, saltos, aterrizajes y meta), con varias voces simultáneas y una rodadura en bucle que sube de tono y volumen con la velocidad de cada canica. No usa archivos de audio. No incluye red, campaña, mandos ni autenticación segura. El freno sostenido y la recuperación son de estilo arcade; la esfera visual gira, mientras se bloquea la rotación del cuerpo para estabilizar la física.
 
 El cierre nativo de Godot comunicado anteriormente no tiene una causa confirmada; las pruebas de estabilidad no lo reprodujeron. Si vuelve a aparecer, el registro de `logs/game.log` permite continuar el diagnóstico.
 

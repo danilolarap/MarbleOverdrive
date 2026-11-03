@@ -21,6 +21,7 @@ var result_data := {}
 var selected_seed := ""
 var placement_ui := false
 var placement_map: TacticalMap
+var placement_bar: ProgressBar
 var workshop := WorkshopScreens.new()
 var scene_return := "menu"
 var guide_return := "menu"
@@ -119,7 +120,7 @@ func button(text: String, callback: Callable, primary: bool = false) -> Button:
 		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 			result.add_theme_color_override(state, Color("152126"))
 	result.pressed.connect(func():
-		host.audio.tone(500, 0.045)
+		host.audio.play("ui_click")
 		callback.call())
 	return result
 
@@ -220,6 +221,9 @@ func show_menu() -> void:
 func show_setup() -> void:
 	workshop.setup(self)
 
+func show_strategy() -> void:
+	workshop.strategy(self)
+
 func show_profiles() -> void:
 	workshop.profiles(self)
 
@@ -319,15 +323,32 @@ func show_placement() -> void:
 	placement_ui = true
 	var root := _clear("hud")
 	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 14)
 	root.add_child(top)
-	phase_label = label(tr("PLACEMENT"), 30, accent)
-	phase_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(phase_label)
-	top.add_child(label(tr("TIME_TO_PLACE"), 17, muted))
+	var titles := VBoxContainer.new()
+	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	titles.add_theme_constant_override("separation", 0)
+	top.add_child(titles)
+	phase_label = label(tr("PLACE_HEADLINE"), 30, accent)
+	titles.add_child(phase_label)
+	hint_label = paragraph(tr("PLACEMENT_STEPS"), 16)
+	titles.add_child(hint_label)
+	var clock := VBoxContainer.new()
+	clock.add_theme_constant_override("separation", 2)
+	top.add_child(clock)
+	var clock_row := HBoxContainer.new()
+	clock.add_child(clock_row)
+	clock_row.add_child(label(tr("TIME_TO_PLACE"), 17, muted))
 	countdown_label = label("30.0", 42)
-	top.add_child(countdown_label)
-	hint_label = paragraph(tr("PLACEMENT_STEPS"), 17)
-	root.add_child(hint_label)
+	clock_row.add_child(countdown_label)
+	placement_bar = ProgressBar.new()
+	placement_bar.show_percentage = false
+	placement_bar.max_value = DuelRace.PLACEMENT_DURATION
+	placement_bar.custom_minimum_size = Vector2(240, 8)
+	var bar_back := StyleBoxFlat.new()
+	bar_back.bg_color = Color(muted, 0.2)
+	placement_bar.add_theme_stylebox_override("background", bar_back)
+	clock.add_child(placement_bar)
 	var map_col := card(root)
 	map_col.get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL
 	map_col.add_child(label(tr("TACTICAL_MAP"), 18, muted))
@@ -338,26 +359,99 @@ func show_placement() -> void:
 	var row := HBoxContainer.new()
 	root.add_child(row)
 	for i in range(2):
-		var col := card(row)
+		var tint: Color = Session.players[i].color.darkened(0.45) if Session.light else Session.players[i].color
+		var col := card(row, Session.players[i].color)
 		col.add_theme_constant_override("separation", 6)
 		var heading := HBoxContainer.new()
 		col.add_child(heading)
-		var title := label(Session.player_name(i), 22, Session.players[i].color.darkened(0.45) if Session.light else Session.players[i].color)
+		var title := label(Session.player_name(i), 22, tint)
 		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		heading.add_child(title)
 		var counter := label("0 / 3", 22)
 		heading.add_child(counter)
+		# The item about to be placed: big symbol, name and where it goes.
+		var next_row := HBoxContainer.new()
+		next_row.add_theme_constant_override("separation", 12)
+		col.add_child(next_row)
+		var next_icon := ItemIcon.new()
+		next_icon.icon_size = 52
+		next_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		next_row.add_child(next_icon)
+		var next_text := VBoxContainer.new()
+		next_text.add_theme_constant_override("separation", 0)
+		next_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		next_row.add_child(next_text)
 		var next_item := label("", 20)
-		col.add_child(next_item)
-		var status := paragraph("", 15)
+		next_text.add_child(next_item)
+		var target := label("", 15)
+		next_text.add_child(target)
+		# All three items in order, with what is placed, next and pending.
+		var chips := HBoxContainer.new()
+		chips.add_theme_constant_override("separation", 6)
+		next_row.add_child(chips)
+		var chip_views: Array = []
+		for slot in range(3):
+			var chip := VBoxContainer.new()
+			chip.add_theme_constant_override("separation", 0)
+			chips.add_child(chip)
+			var icon := ItemIcon.new()
+			icon.icon_size = 34
+			chip.add_child(icon)
+			var state := label("", 12, muted)
+			state.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			chip.add_child(state)
+			chip_views.append({"icon": icon, "state": state})
+		var status := label("", 16)
+		status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		col.add_child(status)
 		var diagram := KeyboardDiagram.new()
 		diagram.player_index = i
 		col.add_child(diagram)
-		hud_labels.append({"speed": counter, "status": status, "actions": next_item})
+		hud_labels.append({"speed": counter, "status": status, "actions": next_item, "next_icon": next_icon, "target": target, "chips": chip_views})
 	footer_label = paragraph("", 14)
 	root.add_child(footer_label)
 	add_notice(root)
+
+func _update_placement_panel(race: DuelRace, i: int, data: Dictionary) -> void:
+	var items: Array = Session.players[i].items
+	var placed: int = race.placed[i]
+	data.speed.text = "%d / 3" % placed
+	for slot in range(3):
+		var chip: Dictionary = data.chips[slot]
+		var id: String = items[slot]
+		chip.icon.kind = id
+		chip.icon.tint = GameCatalog.ITEMS[id].color.darkened(0.3) if Session.light else GameCatalog.ITEMS[id].color
+		chip.icon.dimmed = slot > placed
+		chip.icon.queue_redraw()
+		chip.state.text = "✓" if slot < placed else "▶" if slot == placed else ""
+	var done := placed >= 3
+	var good := Color("166342") if Session.light else Color("88efb6")
+	var bad := Color("a22340") if Session.light else Color("ff8da2")
+	if done:
+		data.next_icon.kind = "REPAIR"
+		data.next_icon.tint = good
+		data.actions.text = tr("ALL_PLACED")
+		data.target.text = ""
+		data.status.text = tr("READY_WAIT")
+		data.status.add_theme_color_override("font_color", good)
+		return
+	var id := race.next_item(i)
+	var trap := GameCatalog.is_trap(id)
+	var target_index := race.next_target(i)
+	data.next_icon.kind = id
+	data.next_icon.tint = GameCatalog.ITEMS[id].color.darkened(0.3) if Session.light else GameCatalog.ITEMS[id].color
+	data.next_icon.queue_redraw()
+	data.actions.text = tr("PLACE_NEXT") + "  ·  " + tr(id)
+	data.target.text = (tr("GOES_RIVAL") if trap else tr("GOES_SELF")) % Session.player_name(target_index)
+	data.target.add_theme_color_override("font_color", Color("ff829c") if trap else Color("64efba"))
+	var issue := race.placement_issue(race.cursor_location(i), i)
+	if issue == "":
+		data.status.text = tr("ISSUE_OK") % tr("PLACE_KEY_P%d" % (i + 1))
+		data.status.add_theme_color_override("font_color", good)
+	else:
+		data.status.text = tr(issue) % Session.player_name(target_index) if issue == "ISSUE_HALF" else tr(issue)
+		data.status.add_theme_color_override("font_color", bad)
+
 func show_hud() -> void:
 	if is_instance_valid(host.race) and host.race.phase == "placement":
 		show_placement()
@@ -437,9 +531,18 @@ func _process(_delta: float) -> void:
 	if placing != placement_ui:
 		show_hud()
 		return
-	phase_label.text = tr("PLACEMENT") if placing else tr("RACE")
+	phase_label.text = tr("PLACE_HEADLINE") if placing else tr("RACE")
 	countdown_label.text = "%.1f" % maxf(0, race.placement_time) if placing else "%05.1f" % race.race_time
 	hint_label.text = tr("PLACEMENT_STEPS") if placing else tr("RACE_TIP")
+	if placing and is_instance_valid(placement_bar):
+		placement_bar.value = maxf(0, race.placement_time)
+		var urgent := race.placement_time <= 5
+		if not placement_bar.has_meta("urgent") or placement_bar.get_meta("urgent") != urgent:
+			var fill := StyleBoxFlat.new()
+			fill.bg_color = Color("ff6f8a") if urgent else accent
+			placement_bar.add_theme_stylebox_override("fill", fill)
+			placement_bar.set_meta("urgent", urgent)
+		countdown_label.add_theme_color_override("font_color", Color("ff6f8a") if race.placement_time <= 5 else ink)
 	footer_label.text = tr("MAP_HELP_SHORT") if placing else "Esc · " + tr("PAUSED") + "     /     F11 · " + tr("FULLSCREEN")
 	footer_label.text += "\n" + tr("SEED_LABEL") % race.track.seed_value
 	for i in range(2):
@@ -448,14 +551,7 @@ func _process(_delta: float) -> void:
 		if data.has("health"):
 			data.health.value = marble.health
 		if placing:
-			data.speed.text = "%d / 3" % race.placed[i]
-			var allowed := race.can_place(race.cursor_location(i), i)
-			data.status.text = tr("EMPTY") if race.placed[i] >= 3 else tr("MAP_ALLOWED") if allowed else tr("MAP_REJECTED")
-			data.status.add_theme_color_override("font_color", Color("166342") if Session.light else Color("88efb6") if allowed else Color("ff8da2"))
-			if not allowed:
-				data.status.add_theme_color_override("font_color", Color("a22340") if Session.light else Color("ff8da2"))
-			var target := race.next_target(i)
-			data.actions.text = (tr("NEXT") % [tr(race.next_item(i)), 3 - race.placed[i]] if race.placed[i] < 3 else tr("EMPTY")) + "\n" + tr("TARGET_SELF" if target == i else "TARGET_RIVAL") % Session.player_name(target)
+			_update_placement_panel(race, i, data)
 		else:
 			data.speed.text = "%03d  km/h" % roundi(marble.linear_velocity.length() * 3.6)
 			var rank := 1 if marble.progress >= race.marbles[1 - i].progress else 2
@@ -532,7 +628,12 @@ func _back() -> void:
 	elif screen == "scenarios":
 		show_setup() if scene_return == "setup" else show_menu()
 	elif screen == "guide":
-		show_setup() if guide_return == "setup" else show_menu()
+		if guide_return == "strategy":
+			show_strategy()
+		else:
+			show_setup() if guide_return == "setup" else show_menu()
+	elif screen == "strategy":
+		show_setup()
 	else:
 		show_menu()
 
@@ -561,6 +662,7 @@ func _preferences_changed() -> void:
 		"profiles": show_profiles()
 		"controls": show_controls()
 		"setup": show_setup()
+		"strategy": show_strategy()
 		"scenarios": show_scenarios(scene_return)
 		"guide": show_guide(guide_return)
 		"hud":
