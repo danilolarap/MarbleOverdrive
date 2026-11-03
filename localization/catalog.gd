@@ -111,7 +111,7 @@ const TEXT := {
 "COURSE_ERROR": ["Course validation failed. Choose another seed.", "Falló la validación de pista. Elige otra semilla."],
 "SAVE_ERROR": ["Could not save local data. Check folder permissions.", "No se pudieron guardar los datos locales. Revisa los permisos de carpeta."],
 "GUEST": ["Guest", "Invitado"],
-"MODULES": ["STRAIGHTS / CURVES / RAMPS / DROPS / HAZARDS", "RECTAS / CURVAS / RAMPAS / CAÍDAS / PELIGROS"],
+"MODULES": ["STRAIGHTS / CURVES / RAMPS / DROPS / HAZARDS / GAPS / PLUNGES", "RECTAS / CURVAS / RAMPAS / CAÍDAS / PELIGROS / HUECOS / DESPLOMES"],
 "PLACEMENT_TIP": ["The entire course is visible. Move along the track to spread your items out.", "Se muestra toda la pista. Avanza por ella para distribuir tus objetos."],
 "RACE_TIP": ["Brake before danger. Jump or phase through obstacles. EMP needs a nearby rival.", "Frena ante el peligro. Salta o atraviesa obstáculos. El PEM requiere un rival cercano."],
 "GHOST": ["Local prototype · procedural courses · no online services", "Prototipo local · pistas procedurales · sin servicios en línea"]
