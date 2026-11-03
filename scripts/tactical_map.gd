@@ -97,25 +97,7 @@ func world_position(point: Vector3) -> Vector2:
 func _item_symbol(at: Vector2, kind: String, color: Color) -> void:
 	draw_circle(at, 10, Color("102438"))
 	draw_arc(at, 10, 0, TAU, 24, color, 2, true)
-	if kind == "BOOST":
-		draw_polyline(PackedVector2Array([at + Vector2(-4, -5), at + Vector2(3, 0), at + Vector2(-4, 5)]), color, 2, true)
-	elif kind == "MAGNET":
-		draw_arc(at - Vector2(2, 0), 5, -PI / 2, PI / 2, 12, color, 3, true)
-	elif kind == "REPAIR":
-		draw_line(at - Vector2(0, 6), at + Vector2(0, 6), color, 3, true)
-		draw_line(at - Vector2(6, 0), at + Vector2(6, 0), color, 3, true)
-	elif kind == "SHIELD":
-		draw_polyline(PackedVector2Array([at + Vector2(-5, -5), at + Vector2(5, -5), at + Vector2(5, 1), at + Vector2(0, 6), at + Vector2(-5, 1), at + Vector2(-5, -5)]), color, 2, true)
-	elif kind == "GRIP":
-		for offset in [-4, 0, 4]:
-			draw_line(at + Vector2(-5, offset), at + Vector2(5, offset), color, 2, true)
-	elif kind == "SHOCK":
-		draw_polyline(PackedVector2Array([at + Vector2(2, -6), at + Vector2(-3, 0), at + Vector2(3, 0), at + Vector2(-2, 6)]), color, 2, true)
-	elif kind == "OIL":
-		draw_circle(at, 5, Color(color, 0.7))
-	else:
-		draw_line(at + Vector2(-4, 5), at + Vector2(1, -5), color, 3, true)
-		draw_line(at + Vector2(1, 5), at + Vector2(6, -5), color, 3, true)
+	ItemGlyph.draw(self, at, kind, color, 0.75)
 
 func _draw() -> void:
 	if not is_instance_valid(race) or font == null:
@@ -133,6 +115,10 @@ func _draw() -> void:
 			draw_dashed_line(run[i], run[i + 1], Color("ffb347"), 4, 8, true)
 	for lane in range(2):
 		draw_polyline(_bands[lane], Color(Session.players[lane].color, 0.17), 17, true)
+	# The half where each pilot's next item must go glows in that pilot's colour.
+	for i in range(2):
+		if race.placed[i] < 3:
+			draw_polyline(_bands[race.next_target(i)], Color(Session.players[i].color, 0.22), 13, true)
 	for cell in cells:
 		var at: Vector2 = cell.point
 		var color: Color = Session.players[cell.owner].color if cell.valid else Color("d08489")
@@ -162,7 +148,12 @@ func _draw() -> void:
 		var status_color := Color("126441") if Session.light else Color("88efb6")
 		if not valid:
 			status_color = Color("a22340") if Session.light else Color("ff8da2")
-		_text(at + Vector2(-8, 5), "OK" if valid else "X", 12, status_color)
+		# The ring shows OK/blocked; the symbol inside is the item that will be placed.
+		draw_arc(at, 20, 0, TAU, 32, status_color, 2.5, true)
+		if race.placed[i] < 3:
+			var next_id: String = race.next_item(i)
+			ItemGlyph.draw(self, at, next_id, GameCatalog.ITEMS[next_id].color.darkened(0.35) if Session.light else GameCatalog.ITEMS[next_id].color, 0.7)
+		_text(at + Vector2(14, -14), "OK" if valid else "X", 12, status_color)
 		var tag_position := at + Vector2(-30, -40 if i == 0 else 55)
 		_text(tag_position, ("J%d" if Session.language == "es" else "P%d") % (i + 1), 18, player_color)
 		draw_line(at + Vector2(0, -17 if i == 0 else 17), at + Vector2(0, -30 if i == 0 else 38), player_color, 2, true)
