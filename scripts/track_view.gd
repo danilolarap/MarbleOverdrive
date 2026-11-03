@@ -98,6 +98,8 @@ func _create_road() -> void:
 	var edge_batches: Array = [[], []]
 	var guard_batches: Array[Transform3D] = []
 	for i in range(track.points.size() - 1):
+		if track.is_gap_segment(i):
+			continue
 		var a := track.sample_at(track.distances[i])
 		var b := track.sample_at(track.distances[i + 1])
 		var vertices: Array[Vector3] = [a.position - a.normal * 5, b.position - b.normal * 5, a.position + a.normal * 5, a.position + a.normal * 5, b.position - b.normal * 5, b.position + b.normal * 5]
@@ -130,6 +132,8 @@ func _create_road() -> void:
 	var fixtures: Array[Transform3D] = []
 	var ribs: Array[Transform3D] = []
 	for distance in range(4, int(track.total_length), 8):
+		if track.is_gap(distance):
+			continue
 		var sample := track.sample_at(distance)
 		for side in [-1, 1]:
 			var p: Vector3 = sample.position + sample.normal * 5.05 * side
@@ -139,19 +143,22 @@ func _create_road() -> void:
 	NeonGeometry.batch_boxes(self, fixtures, view_material(Color("cad178"), 0.4))
 	var supports: Array[Transform3D] = []
 	for distance in range(8, int(track.total_length), 24):
+		if track.is_gap(distance):
+			continue
 		var sample := track.sample_at(distance)
 		var p: Vector3 = sample.position
 		supports.append(Transform3D(Basis.IDENTITY.scaled(Vector3(2.2, p.y - 1, 2.2)), Vector3(p.x, (p.y - 1) / 2, p.z)))
 		NeonGeometry.box(self, p - Vector3(0, 0.45, 0), Vector3(11, 0.5, 1), view_material(Color("18314a"), 0, 0.6))
 	NeonGeometry.batch_boxes(self, supports, view_material(Color("10253b"), 0, 0.6))
 	for section in track.sections:
-		if section.kind in ["ramp", "drop"]:
+		if section.kind in ["ramp", "drop", "plunge"]:
 			for distance in range(int(section.start) + 8, int(section.end) - 5, 10):
 				var sample := track.sample_at(distance)
 				var p: Vector3 = sample.position + sample.up * 0.025
-				var material := view_material(Color("19a2bb") if section.kind == "drop" else Color("377486"), 0.5)
+				var material := view_material(Color("19a2bb") if section.kind in ["drop", "plunge"] else Color("377486"), 0.5)
 				NeonGeometry.beam(self, p - sample.normal * 3.5 - sample.tangent * 0.6, p + sample.tangent * 0.6, 0.1, 0.035, material)
 				NeonGeometry.beam(self, p + sample.normal * 3.5 - sample.tangent * 0.6, p + sample.tangent * 0.6, 0.1, 0.035, material)
+	_create_gap_markers()
 	var finish := track.sample_at(track.total_length - 4)
 	for row in range(10):
 		for column in range(2):
@@ -167,6 +174,20 @@ func _create_road() -> void:
 	banner.pixel_size = 0.025
 	add_child(banner)
 	NeonGeometry.consolidate_boxes(self)
+
+## Amber light bars on both edges of every gap and chevrons on the approach, readable from far away.
+func _create_gap_markers() -> void:
+	var amber := view_material(Color("ffb347"), 2.4)
+	for gap in track.gaps:
+		for edge in [gap.start, gap.end]:
+			var sample := track.sample_at(edge)
+			var p: Vector3 = sample.position + sample.up * 0.07
+			NeonGeometry.beam(self, p - sample.normal * 5, p + sample.normal * 5, 0.2, 0.06, amber)
+		for back in [5.0, 9.0, 13.0]:
+			var sample := track.sample_at(gap.start - back)
+			var p: Vector3 = sample.position + sample.up * 0.05
+			NeonGeometry.beam(self, p - sample.normal * 3.5 - sample.tangent * 0.9, p + sample.tangent * 0.5, 0.12, 0.04, amber)
+			NeonGeometry.beam(self, p + sample.normal * 3.5 - sample.tangent * 0.9, p + sample.tangent * 0.5, 0.12, 0.04, amber)
 
 func _create_hazards() -> void:
 	for hazard in track.hazards:

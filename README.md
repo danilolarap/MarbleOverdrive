@@ -98,7 +98,7 @@ Los escenarios contienen geometría propia, no solo cambios de paleta. El trazad
 
 `RigidBody3D`, colisiones continuas, esferas, gravedad, fuerza de apoyo y guiado lateral por muelle. Las pendientes son geometría real. La cámara encuadra a ambos pilotos y se aleja al separarse. La recuperación devuelve una canica atascada o caída al punto más cercano, sin adelantarla. Las colisiones de las barreras usan capas específicas por destinatario; ambos pilotos colisionan con el suelo.
 
-El generador offline conecta ocho módulos de rectas, curvas, subidas, bajadas, peligros y meta. La semilla reproduce trazado y peligros. Se validan continuidad, pendiente, curvatura, límites y espacio útil. El curso avanza en Z para evitar intersecciones. La semilla se muestra en el HUD y los resultados. No hay integración con IA externa.
+El diseñador de pistas (`scripts/track_ai.gd`) es una **IA local evolutiva**: un algoritmo genético con semilla cría ocho módulos de rectas, curvas, rampas, bajadas, peligros, **saltos con huecos** y **desplomes** de hasta 0,6 de pendiente, y se queda con la pista que mejor cumple la dificultad objetivo, la variedad y el ritmo. La semilla reproduce trazado, huecos y peligros. Se validan continuidad, pendiente, curvatura, límites, espacio útil y que cada hueco sea franqueable a velocidad de crucero. El curso avanza en Z para evitar intersecciones. La semilla se muestra en el HUD y los resultados. No usa red, claves ni modelos externos; si la validación fallara, el generador clásico de módulos actúa como respaldo. Detalles en [docs/TRACK_AI.md](docs/TRACK_AI.md).
 
 ## Organización
 
@@ -134,6 +134,7 @@ $env:APPDATA = Join-Path (Get-Location) 'tools/test-data'
 - `world_capture.tscn`: captura los 13 mundos, perfiles, taller, guía y selector; requiere render gráfico.
 - `stability.tscn`: doce ciclos gráficos de menús, temas, colocación, pausa, carrera, resultados y audio.
 - `optimization.tscn`: 8960 comparaciones contra la búsqueda exhaustiva, mallas compartidas, colores independientes y caché acotada.
+- `track_ai.tscn`: 300 semillas válidas y deterministas, el nivel de dificultad cambia las pistas, y las canicas cruzan los huecos con física real sin recuperaciones.
 - `performance.tscn`: medición reproducible de CPU, mallas, materiales y geometría de los 13 escenarios.
 - `art_contract.tscn`: límites de efectos, persistencia visual, traducciones y separación del decorado; los límites de instancias requieren render gráfico.
 - `art_review.tscn`: 31 capturas de temas, idiomas, resoluciones, distritos, menús, colocación, pausa y resultados.

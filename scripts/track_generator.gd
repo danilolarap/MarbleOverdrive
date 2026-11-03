@@ -3,62 +3,90 @@ extends RefCounted
 ## Seeded modules in 3D, with continuous deck edges and real elevation.
 const WIDTH := 10.0
 const STEP := 2.0
-const MODULES := ["straight", "curve", "ramp", "drop", "hazard"]
 const SAMPLES := 34
+const DEFAULT_LEVEL := 0.7
+## Slope limits as rise/run per 2 m step. Gap connectors are never driven on, so they may be steeper.
+const MAX_SLOPE := 0.62
+const MAX_GAP_SLOPE := 1.0
+const MAX_BEND := 0.19
+const MAX_GAP_BEND := 0.36
+## Placement and recovery keep clear of gaps: nothing sits on or just before a lip.
+const GAP_NO_PLACE_BEFORE := 10.0
+const GAP_NO_PLACE_AFTER := 4.0
+## Run-up: restarting at 12 m/s, 24 m of acceleration reaches ~31 m/s, above the 22 m/s a jump needs.
+const GAP_RECOVERY_BACK := 24.0
+const GAP_HAZARD_CLEARANCE := 40.0
 var points := PackedVector3Array()
 var distances := PackedFloat32Array()
 var sections: Array[Dictionary] = []
 var hazards: Array[Dictionary] = []
+## Each gap is {start, end, cells, drop, section}: the deck, rails and collision are absent between
+## start and end, while `points` stays continuous so closest()/sample_at() keep working.
+var gaps: Array[Dictionary] = []
+var genome: Array[Dictionary] = []
+var used_fallback := false
+var level_value := DEFAULT_LEVEL
 var total_length := 0.0
 var seed_value := 1
 
-func generate(course_seed: int) -> bool:
+## `level` (0 gentle .. 1 extreme) sets the target difficulty the evolutionary designer aims for.
+func generate(course_seed: int, level: float = DEFAULT_LEVEL) -> bool:
 	seed_value = course_seed
+	level_value = clampf(level, 0.0, 1.0)
+	used_fallback = false
+	genome = TrackAI.new().evolve(course_seed, level_value)
+	if _build(genome) and validate():
+		return true
+	# Safety net: the pre-AI layout is deterministic and always valid.
+	used_fallback = true
+	genome = TrackAI.legacy_genome(course_seed)
+	return _build(genome) and validate()
+
+func _build(plan: Array[Dictionary]) -> bool:
 	points.clear()
 	distances.clear()
 	sections.clear()
 	hazards.clear()
+	gaps.clear()
 	total_length = 0
 	var rng := RandomNumberGenerator.new()
-	rng.seed = course_seed
-	var origin := Vector3(0, 22, 0)
+	rng.seed = seed_value
+	var origin := Vector3(0, TrackAI.START_Y, 0)
 	points.append(origin)
 	distances.append(0)
-	var sequence: Array[String] = ["straight"]
-	var shuffled := MODULES.duplicate()
-	for i in range(shuffled.size() - 1, 0, -1):
-		var j := rng.randi_range(0, i)
-		var temporary: String = shuffled[i]
-		shuffled[i] = shuffled[j]
-		shuffled[j] = temporary
-	for kind in shuffled:
-		sequence.append(kind)
-	sequence.append("curve")
-	sequence.append("finish")
+	var sequence: Array[Dictionary] = [{"kind": "straight", "dy": 0.0, "cells": 0, "pairs": 0}]
+	sequence.append_array(plan)
+	sequence.append({"kind": "finish", "dy": 0.0, "cells": 0, "pairs": 0})
 	var side := -1.0 if rng.randf() < 0.5 else 1.0
-	for kind in sequence:
+	for section_index in range(sequence.size()):
+		var gene: Dictionary = sequence[section_index]
+		var kind: String = gene.kind
 		var start := total_length
+		var base_index := points.size() - 1
 		var end_x := side * rng.randf_range(22, 31)
-		var end_y := origin.y
-		if kind in ["straight", "finish"]:
+		# Straight sections, jumps and plunges keep their heading: the marble is not steered in the air.
+		if kind in ["straight", "finish", "jump", "plunge"]:
 			end_x = origin.x
-		if kind == "ramp":
-			end_y += rng.randf_range(7, 10)
-		elif kind == "drop":
-			end_y -= rng.randf_range(10, 13)
-		elif kind == "curve":
-			end_y += rng.randf_range(-2, 2)
-		end_y = clampf(end_y, 12, 36)
+		var drop := TrackAI.landing_drop(gene)
+		var gap_first := SAMPLES / 2
+		var gap_last: int = gap_first + int(gene.cells)
 		for sample_index in range(1, SAMPLES + 1):
 			var t := sample_index / float(SAMPLES)
 			var blend := t * t * (3 - 2 * t)
-			var point := Vector3(lerpf(origin.x, end_x, blend), lerpf(origin.y, end_y, blend), origin.z - 68 * t)
+			var height: float = origin.y + gene.dy * blend
+			if kind == "jump":
+				var c := clampf((sample_index - gap_first) / float(gene.cells), 0.0, 1.0)
+				height -= drop * c * c * (3 - 2 * c)
+			var point := Vector3(lerpf(origin.x, end_x, blend), height, origin.z - 68 * t)
 			total_length += points[-1].distance_to(point)
 			points.append(point)
 			distances.append(total_length)
 		sections.append({"kind": kind, "start": start, "end": total_length})
-		if kind == "hazard":
-			for factor in [0.32, 0.70]:
+		if kind == "jump":
+			gaps.append({"start": distances[base_index + gap_first], "end": distances[base_index + gap_last], "cells": gene.cells, "drop": drop, "section": section_index})
+		var pairs: int = gene.pairs if kind in ["hazard", "curve"] else 0
+		if pairs > 0:
+			for factor in TrackAI.HAZARD_FACTORS[pairs]:
 				var distance: float = lerpf(start, total_length, factor)
 				var sample := sample_at(distance)
 				var offset := rng.randf_range(1.5, 2.2)
@@ -67,28 +95,64 @@ func generate(course_seed: int) -> bool:
 					hazards.append({"position": sample.position + sample.normal * offset * hazard_side, "radius": 0.9})
 		origin = points[-1]
 		side *= -1
-	return validate()
+	return true
 
 func validate() -> bool:
 	if points.size() < 3 or WIDTH < 6 * 0.8 or total_length < 500:
 		return false
 	for i in range(1, points.size()):
 		var segment := points[i] - points[i - 1]
-		if not points[i].is_finite() or segment.z >= 0 or segment.length() > 4 or absf(segment.y / segment.z) > 0.32:
+		var loose := is_gap_segment(i - 1) or (i > 1 and is_gap_segment(i - 2))
+		if not points[i].is_finite() or segment.z >= 0 or segment.length() > 4:
+			return false
+		if absf(segment.y / segment.z) > (MAX_GAP_SLOPE if is_gap_segment(i - 1) else MAX_SLOPE):
+			return false
+		if points[i].y < TrackAI.MIN_Y - 3 or points[i].y > TrackAI.MAX_Y + 4:
 			return false
 		if i > 1:
 			var previous := (points[i - 1] - points[i - 2]).normalized()
-			if previous.angle_to(segment.normalized()) > 0.19:
+			if previous.angle_to(segment.normalized()) > (MAX_GAP_BEND if loose else MAX_BEND):
 				return false
 	for i in range(1, sections.size()):
 		if absf(sections[i].start - sections[i - 1].end) > 0.01:
 			return false
+	for gap in gaps:
+		# Never in the opening run, the finish approach, or taller than a marble can safely drop.
+		if gap.start < 100 or gap.end > total_length - 80 or gap.drop > TrackAI.MAX_LANDING_DROP:
+			return false
+	if hazards.size() > TrackAI.MAX_HAZARD_PAIRS * 2:
+		return false
 	for hazard in hazards:
 		var nearest := closest(hazard.position)
 		var offset: float = absf((hazard.position - nearest.position).dot(nearest.normal))
 		if WIDTH / 2 - offset - hazard.radius < 2 * 0.8:
 			return false
+		if is_gap(nearest.distance, GAP_HAZARD_CLEARANCE, 12.0):
+			return false
 	return true
+
+## True when `distance` lies inside a gap, widened by `before` metres ahead of the lip and `after` past the landing.
+func is_gap(distance: float, before: float = 0.0, after: float = 0.0) -> bool:
+	for gap in gaps:
+		if distance >= gap.start - before and distance <= gap.end + after:
+			return true
+	return false
+
+## Whether the deck segment between points[i] and points[i + 1] is missing.
+func is_gap_segment(i: int) -> bool:
+	if gaps.is_empty() or i < 0 or i >= points.size() - 1:
+		return false
+	return is_gap((distances[i] + distances[i + 1]) / 2)
+
+func is_placement_blocked(distance: float) -> bool:
+	return is_gap(distance, GAP_NO_PLACE_BEFORE, GAP_NO_PLACE_AFTER)
+
+## Where a marble that fell or got stuck at `progress` is put back: before the lip if it failed a jump.
+func recovery_distance(progress: float) -> float:
+	for gap in gaps:
+		if progress >= gap.start - 1.0 and progress <= gap.end + 1.0:
+			return maxf(0.0, gap.start - GAP_RECOVERY_BACK)
+	return progress
 
 func sample_at(distance: float) -> Dictionary:
 	distance = clampf(distance, 0, total_length)
@@ -162,6 +226,8 @@ func build_walls(parent: Node) -> void:
 	parent.add_child(body)
 	var faces := PackedVector3Array()
 	for i in range(points.size() - 1):
+		if is_gap_segment(i):
+			continue
 		var a := sample_at(distances[i])
 		var b := sample_at(distances[i + 1])
 		var left_a: Vector3 = a.position - a.normal * WIDTH / 2
