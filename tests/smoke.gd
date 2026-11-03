@@ -160,7 +160,7 @@ func run() -> void:
 	await get_tree().physics_frame
 	check(race.marbles[0].activate_power(), "Phase did not activate")
 	check(race.marbles[0].phased > 0, "Phase state missing")
-	var ramp: Dictionary = race.track.sections.filter(func(section): return section.kind == "ramp")[0]
+	var ramp: Dictionary = race.track.sections.filter(func(section): return section.kind in ["ramp", "drop", "plunge"])[0]
 	var slope := race.track.sample_at((ramp.start + ramp.end) / 2)
 	var body := race.marbles[0]
 	body.freeze = true
