@@ -12,6 +12,7 @@ var language := "en"
 var light := true
 var quality := "balanced"
 var sound := true
+var music := true
 var fullscreen := false
 var scenario := "CITY"
 var keys: Dictionary = DEFAULT_KEYS.duplicate()
@@ -58,7 +59,7 @@ func _ready() -> void:
 	get_tree().root.close_requested.connect(save)
 
 func fresh_profile() -> Dictionary:
-	return {"language": "en", "light": true, "quality": "balanced", "sound": true, "fullscreen": false,
+	return {"language": "en", "light": true, "quality": "balanced", "sound": true, "music": true, "fullscreen": false,
 		"keys": DEFAULT_KEYS.duplicate(), "matches": 0, "p1": 0, "p2": 0, "wins": 0, "losses": 0, "draws": 0}
 
 func player_name(index: int) -> String:
@@ -84,6 +85,7 @@ func load_preferences() -> void:
 	if quality not in ["balanced", "economy"]:
 		quality = "balanced"
 	sound = data.get("sound", true)
+	music = data.get("music", true)
 	fullscreen = data.get("fullscreen", false)
 	scenario = data.get("scenario", "CITY")
 	if not scenario in GameCatalog.SCENARIOS:
@@ -96,7 +98,7 @@ func load_preferences() -> void:
 
 func save() -> void:
 	var data: Dictionary = profiles[active]
-	data.merge({"language": language, "light": light, "quality": quality, "sound": sound, "fullscreen": fullscreen, "keys": keys, "scenario": scenario}, true)
+	data.merge({"language": language, "light": light, "quality": quality, "sound": sound, "music": music, "fullscreen": fullscreen, "keys": keys, "scenario": scenario}, true)
 	for i in range(2):
 		profiles[profile_slots[i]].marble = players[i].duplicate(true)
 	var cfg := ConfigFile.new()
@@ -121,6 +123,7 @@ func create_profile(profile_name: String, slot: int = 0) -> bool:
 	profiles[profile_name].light = light
 	profiles[profile_name].quality = quality
 	profiles[profile_name].sound = sound
+	profiles[profile_name].music = music
 	profiles[profile_name].fullscreen = fullscreen
 	profiles[profile_name].keys = keys.duplicate()
 	profiles[profile_name].scenario = scenario

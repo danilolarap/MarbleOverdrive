@@ -5,6 +5,7 @@ const TEXT := {
 "PAT_GALAXY": ["Galaxy glass", "Galaxia"], "PAT_HEX": ["Hex scales", "Escamas hexagonales"],
 "PAT_LAVA": ["Lava core", "Núcleo de lava"], "PAT_GEM": ["Faceted gem", "Gema facetada"],
 "PAT_CATSEYE": ["Cat's eye glass", "Ojo de gato"], "PAT_CARBON": ["Carbon weave", "Fibra de carbono"],
+"MUSIC": ["Background music", "Música de fondo"],
 "WORKSHOP_STEP": ["STEP 1 OF 2", "PASO 1 DE 2"],
 "WORKSHOP_NOTE": ["Design your marble: colours and one of 12 finishes.", "Diseña tu canica: colores y uno de los 12 acabados."],
 "WORKSHOP_HINT": ["Each tile shows the real finish with your colours. Next you will choose your power and items.", "Cada recuadro muestra el acabado real con tus colores. Después elegirás tu poder y tus objetos."],

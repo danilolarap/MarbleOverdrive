@@ -269,7 +269,7 @@ func show_settings() -> void:
 		Session.quality = "economy" if index == 1 else "balanced"
 		Session.update_preferences())
 	col.add_child(paragraph(tr("QUALITY_HELP"), 14))
-	for setting in ["fullscreen", "sound"]:
+	for setting in ["fullscreen", "sound", "music"]:
 		var setting_id: String = setting
 		var toggle := CheckButton.new()
 		toggle.text = tr(setting.to_upper())

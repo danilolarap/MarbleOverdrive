@@ -11,6 +11,12 @@ var voices: Array[AudioStreamPlayer] = []
 var rolling: Array[AudioStreamPlayer] = []
 var clips: Dictionary = {}
 var _next_voice := 0
+## Background music: rendered once in a thread, cached on disk, then looped with soft fades.
+const MUSIC_DB := -13.0
+const MUSIC_RACE_DB := -19.0
+var music_player: AudioStreamPlayer
+var _music_thread: Thread
+var _last_roll_msec := 0
 var _prewarm: Array = []
 var player: AudioStreamPlayer:
 	get:
@@ -29,8 +35,10 @@ func _ready() -> void:
 		add_child(rumble)
 		rolling.append(rumble)
 	_prewarm = EFFECTS.duplicate()
+	_start_music()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_update_music(delta)
 	# Render the library a couple of clips per frame instead of stalling the first menu click.
 	for i in range(2):
 		if _prewarm.is_empty():
@@ -70,6 +78,7 @@ func tone(hz: float, duration: float = 0.12) -> void:
 func set_rolling(index: int, speed: float, on_ground: bool) -> void:
 	if index >= rolling.size():
 		return
+	_last_roll_msec = Time.get_ticks_msec()
 	var rumble := rolling[index]
 	var amount := clampf(speed / 39.0, 0.0, 1.2) if on_ground and Session.sound else 0.0
 	if amount < 0.03:
@@ -85,10 +94,59 @@ func set_rolling(index: int, speed: float, on_ground: bool) -> void:
 	rumble.pitch_scale = 0.55 + amount * 0.8
 
 func stop_rolling() -> void:
+	_last_roll_msec = 0
 	for rumble in rolling:
 		rumble.stop()
 
+# ---------- background music ----------
+
+func _music_cache_path() -> String:
+	return "user://music_v%d.pcm" % MusicSynth.VERSION
+
+func _start_music() -> void:
+	var path := _music_cache_path()
+	if FileAccess.file_exists(path):
+		var cached := FileAccess.get_file_as_bytes(path)
+		if cached.size() == MusicSynth.FRAMES * 4:
+			_create_music(cached)
+			return
+	# First launch: compose it in a thread so the menu never stalls (about 3 s).
+	_music_thread = Thread.new()
+	_music_thread.start(func() -> PackedByteArray: return MusicSynth.new().render())
+
+func _create_music(pcm: PackedByteArray) -> void:
+	music_player = AudioStreamPlayer.new()
+	music_player.stream = MusicSynth.make_stream(pcm)
+	music_player.volume_db = -80.0
+	add_child(music_player)
+	music_player.play()
+
+func _update_music(delta: float) -> void:
+	if _music_thread and not _music_thread.is_alive():
+		var pcm: PackedByteArray = _music_thread.wait_to_finish()
+		_music_thread = null
+		var file := FileAccess.open(_music_cache_path(), FileAccess.WRITE)
+		if file:
+			file.store_buffer(pcm)
+			file.close()
+		_create_music(pcm)
+	if music_player == null:
+		return
+	# The music sits lower while marbles are rolling so the race effects stay clear.
+	var racing := Time.get_ticks_msec() - _last_roll_msec < 400
+	var target := -80.0
+	if Session.sound and Session.music:
+		target = MUSIC_RACE_DB if racing else MUSIC_DB
+	music_player.volume_db = move_toward(music_player.volume_db, target, 40.0 * delta)
+	music_player.stream_paused = target <= -79.0 and music_player.volume_db <= -79.0
+
 func _exit_tree() -> void:
+	if _music_thread:
+		_music_thread.wait_to_finish()
+		_music_thread = null
+	if music_player:
+		music_player.stop()
+		music_player.stream = null
 	for voice in voices + rolling:
 		voice.stop()
 		voice.stream = null
