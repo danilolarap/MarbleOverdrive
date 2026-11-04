@@ -44,7 +44,7 @@ Pantalla completa usa el monitor entero, en modo exclusivo. El lienzo y la cáma
 
 Hay siempre **dos perfiles activos distintos**, uno por jugador. En Perfiles puedes crear o seleccionar cada uno de forma independiente. La biblioteca conserva perfiles guardados anteriormente; no se eliminan para limitar los dos puestos activos.
 
-Cada perfil conserva nombre, apariencia, poder, equipo y estadísticas individuales de victorias, derrotas y empates. Los nombres aparecen en configuración, HUD, canicas y resultados. Idioma, tema, pantalla completa, sonido y asignaciones de teclado son ajustes compartidos del perfil anfitrión (jugador 1). Los perfiles nuevos heredan los ajustes actuales para no salir accidentalmente de pantalla completa.
+Cada perfil conserva nombre, apariencia, poder, equipo y estadísticas individuales de victorias, derrotas y empates. Los nombres aparecen en configuración, HUD, canicas y resultados. Idioma, tema, pantalla completa, sonido, música y asignaciones de teclado son ajustes compartidos del perfil anfitrión (jugador 1). Los perfiles nuevos heredan los ajustes actuales para no salir accidentalmente de pantalla completa.
 
 Los datos viven en `user://profiles.cfg`, normalmente `%APPDATA%/Godot/app_userdata/Marble Overdrive/profiles.cfg`. Son perfiles locales de conveniencia, sin contraseñas ni cuentas en línea. Los archivos anteriores se migran conservando la biblioteca, las estadísticas antiguas y los ajustes. Las combinaciones de equipo antiguas que exceden las reglas nuevas se sustituyen por el equipo inicial válido.
 
@@ -134,6 +134,7 @@ $env:APPDATA = Join-Path (Get-Location) 'tools/test-data'
 - `world_capture.tscn`: captura los 13 mundos, perfiles, taller, guía y selector; requiere render gráfico.
 - `stability.tscn`: doce ciclos gráficos de menús, temas, colocación, pausa, carrera, resultados y audio.
 - `optimization.tscn`: 8960 comparaciones contra la búsqueda exhaustiva, mallas compartidas, colores independientes y caché acotada.
+- `music.tscn`: la música es determinista, dura exactamente 16 compases, no tiene costura al repetirse, mantiene un volumen bajo y parejo, se silencia con el ajuste y está traducida.
 - `track_ai.tscn`: 300 semillas válidas y deterministas, el nivel de dificultad cambia las pistas, y las canicas cruzan los huecos con física real sin recuperaciones.
 - `performance.tscn`: medición reproducible de CPU, mallas, materiales y geometría de los 13 escenarios.
 - `art_contract.tscn`: límites de efectos, persistencia visual, traducciones y separación del decorado; los límites de instancias requieren render gráfico.
@@ -144,7 +145,7 @@ Para pruebas gráficas omite `--headless` y cambia la escena. Las capturas queda
 
 ## Alcance
 
-Versión estilizada con geometría original de Godot. Los escenarios son decorados propios de un prototipo, no recreaciones fotorrealistas. No requiere modelos, música o texturas externos. El sonido (`scripts/audio.gd`) sintetiza en código 24 efectos con nombre (interfaz, colocación, cuenta atrás, cada objeto y poder, peligros, saltos, aterrizajes y meta), con varias voces simultáneas y una rodadura en bucle que sube de tono y volumen con la velocidad de cada canica. No usa archivos de audio. No incluye red, campaña, mandos ni autenticación segura. El freno sostenido y la recuperación son de estilo arcade; la esfera visual gira, mientras se bloquea la rotación del cuerpo para estabilizar la física.
+Versión estilizada con geometría original de Godot. Los escenarios son decorados propios de un prototipo, no recreaciones fotorrealistas. No requiere modelos, música o texturas externos. La **música de fondo** (`scripts/music_synth.gd`) también se compone en código: un bucle futurista y tranquilo de 16 compases (43 s, La menor, 90 BPM) con pad suave, pulso grave, arpegio con eco, campanas y un tic ligero. Se genera una sola vez en un hilo (unos 3 s la primera vez), se guarda en caché en `user://music_v1.pcm` y desde entonces carga al instante. El final enlaza con el inicio sin corte, baja 6 dB mientras ruedan las canicas y se apaga desde Ajustes con «Música de fondo» (independiente de los efectos). El sonido (`scripts/audio.gd`) sintetiza en código 24 efectos con nombre (interfaz, colocación, cuenta atrás, cada objeto y poder, peligros, saltos, aterrizajes y meta), con varias voces simultáneas y una rodadura en bucle que sube de tono y volumen con la velocidad de cada canica. No usa archivos de audio. No incluye red, campaña, mandos ni autenticación segura. El freno sostenido y la recuperación son de estilo arcade; la esfera visual gira, mientras se bloquea la rotación del cuerpo para estabilizar la física.
 
 El cierre nativo de Godot comunicado anteriormente no tiene una causa confirmada; las pruebas de estabilidad no lo reprodujeron. Si vuelve a aparecer, el registro de `logs/game.log` permite continuar el diagnóstico.
 
