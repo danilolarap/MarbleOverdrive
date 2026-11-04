@@ -23,7 +23,8 @@ const WORLD_COLORS := {
 	"DESERT": [Color("342a30"), Color("edc78b")], "CANDY": [Color("301d3a"), Color("ef9cda")],
 	"FACTORY": [Color("252d38"), Color("efad65")], "SKY_GARDENS": [Color("263249"), Color("a9d8ef")]
 }
-const PATTERNS := ["SOLID", "STRIPES", "DUAL", "RINGS", "CHECKER", "LIGHTNING"]
+## Order must match shaders/marble_designs.gdshaderinc.
+const PATTERNS := ["SOLID", "STRIPES", "DUAL", "RINGS", "CHECKER", "LIGHTNING", "GALAXY", "HEX", "LAVA", "GEM", "CATSEYE", "CARBON"]
 const PALETTE := [Color("34e4ef"), Color("ffb14a"), Color("c196ff"), Color("63edab"), Color("ff7795"), Color("6f9dff"), Color("f9ed89"), Color("f1f6ff"), Color("ef69df"), Color("eb775c"), Color("35c6a6"), Color("65748e")]
 
 static func is_trap(id: String) -> bool:

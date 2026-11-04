@@ -121,6 +121,7 @@ static func install() -> void:
 	var messages := TEXT.duplicate()
 	messages.merge(preload("res://localization/expansion.gd").TEXT, true)
 	messages.merge(preload("res://localization/art_direction.gd").TEXT, true)
+	messages.merge(preload("res://localization/workshop.gd").TEXT, true)
 	for lang_index in range(2):
 		var catalog := Translation.new()
 		catalog.locale = ["en", "es"][lang_index]
