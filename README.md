@@ -10,6 +10,17 @@ Haz doble clic en **Play.cmd**. En este equipo usa el Godot 4.4.1 portátil de `
 
 No hay un ejecutable exportado independiente: el lanzador ejecuta el proyecto con el motor portátil. Los registros se guardan en `logs/game.log`.
 
+### Descarga de Windows para el portafolio
+
+El flujo [Windows download](.github/workflows/windows-release.yml) exporta el juego con Godot 4.4.1 y genera `MarbleOverdrive-Windows.zip`. Dentro van **MarbleOverdrive.exe y MarbleOverdrive.pck**; deben mantenerse juntos al descomprimir. No hace falta instalar Godot para jugar.
+
+1. Sube este flujo al repositorio. En GitHub, ve a **Actions → Windows download → Run workflow** para generar un ZIP de prueba. El artefacto de Actions sirve para revisarlo, pero no como enlace permanente del portafolio.
+2. Descarga el artefacto, extrae el ZIP del juego y ejecútalo en Windows. Comprueba menú, carrera, audio y guardado de perfiles antes de publicarlo.
+3. Crea y sube una etiqueta de versión, por ejemplo `git tag v0.2.0` y `git push origin v0.2.0`. El flujo creará una **GitHub Release** con el ZIP descargable.
+4. Usa esta URL como destino del botón **Descargar para Windows** en el portafolio: `https://github.com/danilolarap/MarbleOverdrive/releases/latest/download/MarbleOverdrive-Windows.zip`. El enlace funcionará después de la primera Release publicada.
+
+El flujo imprime el tamaño y SHA-256 del ZIP en el registro. Los binarios generados quedan fuera del historial Git gracias a `.gitignore`.
+
 En **Linux y macOS**, abre `project.godot` en Godot o usa `sh Play.sh` con Godot instalado. Hay presets de Windows x64, Linux x64 y macOS Universal; las instrucciones y las pruebas pendientes por plataforma están en [exportación de escritorio](docs/DESKTOP_EXPORTS.md).
 
 ## Copia ligera para GitHub
